@@ -5,6 +5,8 @@ import http from 'http';
 import { Server } from 'socket.io';
 import {connectDatabase}  from './src/lib/DB.js';
 import router from './src/routes/user.route.js';
+import cookieParser from 'cookie-parser';
+
 dotenv.config();
 
 const app = express();
@@ -20,6 +22,9 @@ const server = http.createServer(app);
 });*/
 
 app.use(express.json());
+app.use(cookieParser())
+
+
 app.use('/api/auth', router);
 
 /*io.on('connection', (socket) => {
