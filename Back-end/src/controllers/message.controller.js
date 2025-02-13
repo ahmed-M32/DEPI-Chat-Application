@@ -63,11 +63,11 @@ export const sendChatMessage = async (req, res) => {
 		}
 
 		const newMessage = new Message({
-			senderId,
-			recieverId,
-			text,
+			sender:senderId,
+			reciever:recieverId,
+			content :text,
 			image: imageURL,
-			chatId,
+			chat :chatId,
 			isRead: true,
 		});
 
