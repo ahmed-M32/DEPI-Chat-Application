@@ -1,11 +1,12 @@
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 
-import express from 'express';
-import http from 'http';
-import { Server } from 'socket.io';
-import {connectDatabase}  from './src/lib/DB.js';
-import router from './src/routes/user.route.js';
-import cookieParser from 'cookie-parser';
+import express from "express";
+import http from "http";
+import { Server } from "socket.io";
+import { connectDatabase } from "./src/lib/DB.js";
+import router from "./src/routes/user.route.js";
+import messgeRouter from "./src/routes/message.route.js";
+import cookieParser from "cookie-parser";
 
 dotenv.config();
 
@@ -22,10 +23,10 @@ const server = http.createServer(app);
 });*/
 
 app.use(express.json());
-app.use(cookieParser())
+app.use(cookieParser());
 
-
-app.use('/api/auth', router);
+app.use("/api/auth", router);
+app.use("/api/message", messageRouter);
 
 /*io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
@@ -41,8 +42,8 @@ app.use('/api/auth', router);
 });
 */
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-  
-  console.log("Calling connectDatabase()...");
-  connectDatabase();
+	console.log(`Server is running on http://localhost:${PORT}`);
+
+	console.log("Calling connectDatabase()...");
+	connectDatabase();
 });
