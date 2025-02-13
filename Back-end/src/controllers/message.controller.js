@@ -2,6 +2,8 @@ import Message from "../models/message.model.js";
 import { User } from "../models/user.model.js";
 import Chat from "../models/chat.model.js";
 import Group from "../models/group.model.js";
+import v2 from "../lib/cloudinary.js";
+
 
 export const getUsers = async (req, res) => {
 	try {
