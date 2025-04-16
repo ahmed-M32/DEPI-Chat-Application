@@ -82,3 +82,14 @@ export const sendChatMessage = async (req, res) => {
         res.status(500).json("internal server error")
     }
 };
+
+
+
+export const createGroup = async (req,res) => {
+	 try{
+		const {gName :groupName, img:groupImage} = req.body;
+
+	 }catch(error){
+
+	 }
+}
