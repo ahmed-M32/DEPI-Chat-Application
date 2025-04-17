@@ -87,9 +87,36 @@ export const sendChatMessage = async (req, res) => {
 
 export const createGroup = async (req,res) => {
 	 try{
-		const {gName :groupName, img:groupImage} = req.body;
+		const {gName :groupName, img:image, mem:members} = req.body;
+				
+
+		let imageURL;
+		if (image) {
+			const upload = await v2.uploader.upload(image);
+			imageURL = upload.secure_url;
+		}
+
+		 const newGroup = new Group({
+
+		let imageURL;
+		if (image) {
+			const upload = await v2.uploader.upload(image);
+			imageURL = upload.secure_url;
+		}
+
+			 groupName  : gName,
+			 groupImg : imageURL,
+			 members: mem
+		 })
+
+		 await newGroup.save();
+		 res.status(200).json(newGroup);
+		 
+		
 
 	 }catch(error){
-
+		console.log("error during group creation")
+		 res.status(500).json("internal server error");
+		 
 	 }
 }
