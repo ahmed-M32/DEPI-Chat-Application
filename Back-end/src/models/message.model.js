@@ -14,7 +14,7 @@ const messageSchema = mongoose.Schema(
     },
     image: { type: String },
     chat: { type: mongoose.Schema.ObjectId, required: true, ref: "Chat" },
-    group: { type: mongoose.Schema.ObjectId, ref: "Group", default: "" },
+    group: { type: mongoose.Schema.ObjectId, ref: "Group", required: false },
     isRead: { type: Boolean, default: false },
   },
   { timestamps: true }
