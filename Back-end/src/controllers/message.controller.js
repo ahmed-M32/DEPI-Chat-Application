@@ -3,6 +3,7 @@ import { User } from "../models/user.model.js";
 import Chat from "../models/chat.model.js";
 import Group from "../models/group.model.js";
 import v2 from "../lib/cloudinary.js";
+import { encrypt,decrypt } from "../lib/crypto.js";
 
 
 export const getUsers = async (req, res) => {
@@ -24,9 +25,15 @@ export const getMessages = async (req, res) => {
 		const messages = await Message.find({ chat: chatId })
 			.poputlate("sender", "fullName profilePicture")
 			.populate("reciever", "fullName profilePicture")
-			.sort({ createdAt: 1 });
+			.sort({ createdAt: 1 }); 
 
-		res.status(200).json(messages);
+		const fetchedMessages = messages.map((m)=> {
+			const {encryptedData ,iv ,authTag} = m.content;
+			const decryptedData = decrypt(encryptedData,iv,authTag);
+			m.content = decryptedData;
+		})
+
+		res.status(200).json(fetchedMessages);
 	} catch (error) {
 		console.error("Can't get messages:", error);
 		res.status(500).json({ error: "Internal server error" });
@@ -64,31 +71,34 @@ export const sendChatMessage = async (req, res) => {
 			imageURL = upload.secure_url;
 		}
 
+		const { encryptedData, iv, authTag } = encrypt(text);
+
+
 		const newMessage = new Message({
 			sender:senderId,
-			reciever:recieverId,
-			content :text,
+			receiver:recieverId,
+			content :{encryptedData,iv,authTag},
 			image: imageURL,
 			chat :chatId,
 			isRead: true,
 		});
 
 
-        await newMessage.save();
+		await newMessage.save();
 
-        res.status(200).json(newMessage)
+		res.status(200).json(newMessage)
 	} catch (error) {
-        console.log("cannot send the message", error);
-        res.status(500).json("internal server error")
-    }
+		console.log("cannot send the message", error);
+		res.status(500).json("internal server error")
+	}
 };
 
 
 
 export const createGroup = async (req,res) => {
-	 try{
-		const {gName :groupName, img:image, mem:members} = req.body;
-				
+	try{
+		const {groupName:gName, image, members:mem} = req.body;
+
 
 		let imageURL;
 		if (image) {
@@ -96,27 +106,54 @@ export const createGroup = async (req,res) => {
 			imageURL = upload.secure_url;
 		}
 
-		 const newGroup = new Group({
+		const newGroup = new Group({
+			groupName  : gName,
+			groupImg : imageURL,
+			members: mem
+		})
 
-		let imageURL;
-		if (image) {
-			const upload = await v2.uploader.upload(image);
-			imageURL = upload.secure_url;
-		}
+		await newGroup.save();
+		res.status(200).json(newGroup);
 
-			 groupName  : gName,
-			 groupImg : imageURL,
-			 members: mem
-		 })
 
-		 await newGroup.save();
-		 res.status(200).json(newGroup);
-		 
-		
 
-	 }catch(error){
+	}catch(error){
 		console.log("error during group creation")
-		 res.status(500).json("internal server error");
-		 
-	 }
+		console.log(error)
+
+		res.status(500).json("internal server error");
+
+	}
+}
+	
+
+
+export const createChat =async (req, res) => {
+
+	try{
+	const receiverId  = req.body.member
+
+	const senderId = req.user._id;
+	const chatMembers = [senderId, receiverId]
+
+	const existingChat = await Chat.findOne({ members: { $all: chatMembers, $size: 2 }});
+
+	console.log(senderId,receiverId);
+	if(existingChat){
+		return res.status(400).json(existingChat)
+	}
+
+	const newchat = new Chat({
+		members :chatMembers,	
+	})
+	
+	await newchat.save();
+		res.status(200).json(newchat)
+	} catch(error){
+		console.log(error);
+		res.status(500).json("internal server erorr");
+	}
+
+
+
 }
