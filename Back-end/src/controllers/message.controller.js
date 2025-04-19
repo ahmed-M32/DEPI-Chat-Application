@@ -6,6 +6,7 @@ import v2 from "../lib/cloudinary.js";
 import { encrypt,decrypt } from "../lib/crypto.js";
 
 
+
 export const getUsers = async (req, res) => {
 	try {
 		const currentUser = req.user._id;
@@ -85,6 +86,9 @@ export const sendChatMessage = async (req, res) => {
 
 
 		await newMessage.save();
+		const io = req.app.get("io")
+
+		io.to(recieverId).emit("receiveMessage", newMessage)
 
 		res.status(200).json(newMessage)
 	} catch (error) {
