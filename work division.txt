@@ -1,0 +1,7 @@
+1- authentication, user context 
+2 - chat page layout, navigation.
+3- chatbox, message page
+4- mesage api integration
+5-socket io integration
+6-ui components , styling utilities 
+
