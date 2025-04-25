@@ -1,4 +1,4 @@
-1- authentication, user context 
+1- authentication, user context //done
 2 - chat page layout, navigation.
 3- chatbox, message page
 4- mesage api integration // abd el-rahman
