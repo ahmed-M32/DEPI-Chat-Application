@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
+import HomePage from "./pages/hamepage.jsx"
+
 
 const socket = io('http://localhost:5000'); 
 
@@ -27,6 +29,7 @@ function App() {
   return (
     <div>
       <h1>Socket.IO Chat</h1>
+	<HomePage/>
       <div>
         {messages.map((msg, index) => (
           <p key={index}>{msg}</p>

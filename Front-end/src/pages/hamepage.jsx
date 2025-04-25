@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getMessages } from '../../api/api';
+import { getMessages } from '../api/api.jsx';
 
 const HomePage = () => {
   const [messages, setMessages] = useState([]);
