@@ -20,7 +20,9 @@ app.use(
 		credentials: true, // If you're using cookies/auth headers
 		methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Allowed methods
 	})
+
 );
+
 const io = new Server(server, {
 	cors: {
 		origin: "*",

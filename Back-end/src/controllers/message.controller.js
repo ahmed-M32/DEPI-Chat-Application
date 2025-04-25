@@ -3,9 +3,7 @@ import { User } from "../models/user.model.js";
 import Chat from "../models/chat.model.js";
 import Group from "../models/group.model.js";
 import v2 from "../lib/cloudinary.js";
-import { encrypt,decrypt } from "../lib/crypto.js";
-
-
+import { encrypt, decrypt } from "../lib/crypto.js";
 
 export const getUsers = async (req, res) => {
 	try {
@@ -24,26 +22,27 @@ export const getMessages = async (req, res) => {
 		const { chatId } = req.params;
 
 		const messages = await Message.find({ chat: chatId })
-			.poputlate("sender", "fullName profilePicture")
+			.populate("sender", "fullName profilePicture")
 			.populate("reciever", "fullName profilePicture")
-			.sort({ createdAt: 1 }); 
+			.sort({ createdAt: 1 });
 
-		const fetchedMessages = messages.map((m)=> {
-			const {encryptedData ,iv ,authTag} = m.content;
-			const decryptedData = decrypt(encryptedData,iv,authTag);
+		const fetchedMessages = messages.map((m) => {
+			const { encryptedData, iv, authTag } = m.content;
+			const decryptedData = decrypt(encryptedData, iv, authTag);
 			m.content = decryptedData;
-		})
+		});
 
 		res.status(200).json(fetchedMessages);
 	} catch (error) {
 		console.error("Can't get messages:", error);
-		res.status(500).json({ error: "Internal server error" });
+		res.status(500).json({ error: "Internal server errorss" });
 	}
 };
 
 export const getUserChats = async (req, res) => {
 	try {
 		const userId = req.user._id;
+		console.log(userId);
 
 		const chats = await Chat.find({ members: { $in: [userId] } }).populate(
 			"members",
@@ -74,35 +73,30 @@ export const sendChatMessage = async (req, res) => {
 
 		const { encryptedData, iv, authTag } = encrypt(text);
 
-
 		const newMessage = new Message({
-			sender:senderId,
-			receiver:recieverId,
-			content :{encryptedData,iv,authTag},
+			sender: senderId,
+			receiver: recieverId,
+			content: { encryptedData, iv, authTag },
 			image: imageURL,
-			chat :chatId,
+			chat: chatId,
 			isRead: true,
 		});
 
-
 		await newMessage.save();
-		const io = req.app.get("io")
+		const io = req.app.get("io");
 
-		io.to(recieverId).emit("receiveMessage", newMessage)
+		io.to(recieverId).emit("receiveMessage", newMessage);
 
-		res.status(200).json(newMessage)
+		res.status(200).json(newMessage);
 	} catch (error) {
 		console.log("cannot send the message", error);
-		res.status(500).json("internal server error")
+		res.status(500).json("internal server error");
 	}
 };
 
-
-
-export const createGroup = async (req,res) => {
-	try{
-		const {groupName:gName, image, members:mem} = req.body;
-
+export const createGroup = async (req, res) => {
+	try {
+		const { groupName: gName, image, members: mem } = req.body;
 
 		let imageURL;
 		if (image) {
@@ -111,53 +105,45 @@ export const createGroup = async (req,res) => {
 		}
 
 		const newGroup = new Group({
-			groupName  : gName,
-			groupImg : imageURL,
-			members: mem
-		})
+			groupName: gName,
+			groupImg: imageURL,
+			members: mem,
+		});
 
 		await newGroup.save();
 		res.status(200).json(newGroup);
-
-
-
-	}catch(error){
-		console.log("error during group creation")
-		console.log(error)
+	} catch (error) {
+		console.log("error during group creation");
+		console.log(error);
 
 		res.status(500).json("internal server error");
-
 	}
-}
-	
+};
 
+export const createChat = async (req, res) => {
+	try {
+		const receiverId = req.body.member;
 
-export const createChat =async (req, res) => {
+		const senderId = req.user._id;
+		const chatMembers = [senderId, receiverId];
 
-	try{
-	const receiverId  = req.body.member
+		const existingChat = await Chat.findOne({
+			members: { $all: chatMembers, $size: 2 },
+		});
 
-	const senderId = req.user._id;
-	const chatMembers = [senderId, receiverId]
+		console.log(senderId, receiverId);
+		if (existingChat) {
+			return res.status(400).json(existingChat);
+		}
 
-	const existingChat = await Chat.findOne({ members: { $all: chatMembers, $size: 2 }});
+		const newchat = new Chat({
+			members: chatMembers,
+		});
 
-	console.log(senderId,receiverId);
-	if(existingChat){
-		return res.status(400).json(existingChat)
-	}
-
-	const newchat = new Chat({
-		members :chatMembers,	
-	})
-	
-	await newchat.save();
-		res.status(200).json(newchat)
-	} catch(error){
+		await newchat.save();
+		res.status(200).json(newchat);
+	} catch (error) {
 		console.log(error);
 		res.status(500).json("internal server erorr");
 	}
-
-
-
-}
+};
