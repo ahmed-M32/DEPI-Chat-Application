@@ -10,13 +10,13 @@ export const register = async (req, res) => {
 	try {
 		if (userData.password.length < 6) {
 			return res
-				.status(400)
+				.status(401)
 				.json({ message: "Password must be at least 6 characters long" });
 		}
 		const existingUser = await User.findOne({ email: userData.email });
 		if (existingUser) {
 			return res
-				.status(400)
+				.status(402)
 				.json({ message: "User with this email already exists" });
 		}
 
@@ -63,7 +63,7 @@ export const login = async (req, res) => {
 			user.password
 		);
 		if (!validPassword) {
-			return res.status(400).json({ message: "wrong password" });
+			return res.status(401).json({ message: "wrong password" });
 		}
 		generateJwtToken(user._id, res);
 		res.status(200).json({
