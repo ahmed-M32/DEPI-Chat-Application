@@ -11,6 +11,7 @@ export const useUsers = () => {
 
 export const UserProvider = ({ children }) => {
 	const [users, setUsers] = useState([]);
+	const [currentUser, setCurrentUser] = useState("");
 
 	useEffect(() => {
 		const fetchUsers = async () => {
@@ -25,6 +26,9 @@ export const UserProvider = ({ children }) => {
 		};
 		fetchUsers();
 	}, []);
+	const exports = {
+		users, currentUser,setCurrentUser
+	}
 
-	return <UserContext.Provider value={users}>{children}</UserContext.Provider>;
+	return <UserContext.Provider value={exports}>{children}</UserContext.Provider>;
 };

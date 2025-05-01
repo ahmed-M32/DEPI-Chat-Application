@@ -3,11 +3,13 @@ import React from "react";
 import { useState } from "react";
 import { login } from "../api/auth.jsx";
 import { useNavigate } from "react-router-dom";
+import { useUsers } from "../context/user-context.jsx";
 
 const LoginPage = () => {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const navigate = useNavigate();
+	const {setuser} = useUsers().setCurrentUser
 
 	async function handleSubmission(e) {
 		e.preventDefault();
@@ -21,7 +23,8 @@ const LoginPage = () => {
 		if (res.success) {
 			console.log("sign up success");
 
-			navigate("/home");
+			setuser(res.data)
+			navigate("/chats");
 		} else {
 			if (res.code === 400) {
 				console.log(res);

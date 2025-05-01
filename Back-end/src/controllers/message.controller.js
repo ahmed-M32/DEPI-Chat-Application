@@ -41,18 +41,34 @@ export const getMessages = async (req, res) => {
 
 export const getUserChats = async (req, res) => {
 	try {
-		const userId = req.user._id;
-		console.log(userId);
+		const userId = req.user._id.toString(); // ensure it's a string
 
 		const chats = await Chat.find({ members: { $in: [userId] } }).populate(
 			"members",
 			"fullName profilePicture"
 		);
+
 		const groups = await Group.find({ members: { $in: [userId] } }).populate(
 			"members",
 			"fullName profilePicture"
 		);
-		res.status(200).json({ userChats: chats, userGroups: groups });
+
+		// Reorder members so that current user is always first
+		const reorderMembers = (arr) =>
+			arr.map((item) => {
+				const members = item.members.map((m) => m.toObject?.() || m);
+				const currentUser = members.find((m) => m._id.toString() === userId);
+				const others = members.filter((m) => m._id.toString() !== userId);
+				return {
+					...item.toObject(), // convert Mongoose doc to plain object
+					members: [currentUser, ...others],
+				};
+			});
+
+		const reorderedChats = reorderMembers(chats);
+		const reorderedGroups = reorderMembers(groups);
+
+		res.status(200).json({ userChats: reorderedChats, userGroups: reorderedGroups });
 	} catch (error) {
 		console.error("Error fetching chats:", error);
 		res.status(500).json({ error: "Internal server error" });
@@ -96,7 +112,9 @@ export const sendChatMessage = async (req, res) => {
 
 export const createGroup = async (req, res) => {
 	try {
-		const { groupName: gName, image, members: mem } = req.body;
+		const { groupName: gName, groupImg : image, members: mem } = req.body;
+		console.log("here");
+		
 
 		let imageURL;
 		if (image) {

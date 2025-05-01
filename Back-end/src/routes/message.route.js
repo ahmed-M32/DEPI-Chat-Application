@@ -10,9 +10,10 @@ messageRouter.post("/send/:id", checkAuthentication, sendChatMessage);
 messageRouter.get("/get-users", checkAuthentication, getUsers);
 messageRouter.get("/chat", checkAuthentication, getUserChats);
 messageRouter.post("/add-chat" ,checkAuthentication,createChat);
+messageRouter.post("/add-group",checkAuthentication,createGroup);
+
 
 
 messageRouter.get("/:chatId", checkAuthentication, getMessages);
 
-messageRouter.post("/add-group",checkAuthentication,createGroup);
 export default messageRouter;

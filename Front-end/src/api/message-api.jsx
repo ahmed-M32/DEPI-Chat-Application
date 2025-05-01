@@ -64,13 +64,32 @@ export const createNewChat = async (id) => {
 	};
 
 	return axios
-		.post("http://localhost:5000/api/message/add-chat",data, {
+		.post("http://localhost:5000/api/message/add-chat", data, {
 			withCredentials: true,
 		})
 		.then((res) => {
 			return {
 				success: true,
 				chatId: res.data,
+			};
+		})
+		.catch((error) => {
+			return {
+				success: false,
+				code: error.response.status,
+			};
+		});
+};
+
+export const createNewGroup = async (data) => {
+	return axios
+		.post("http://localhost:5000/api/message/add-group", data, {
+			withCredentials: true,
+		})
+		.then((res) => {
+			return {
+				success: true,
+				data: res.data,
 			};
 		})
 		.catch((error) => {
