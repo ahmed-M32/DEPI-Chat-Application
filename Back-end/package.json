@@ -1,12 +1,12 @@
 {
-  "name": "back-end",
+  "name": "depi-chat-backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Backend for DEPI Chat Application",
   "type": "module",
-  "main": "Server.js",
+  "main": "src/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon server.js"
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
   },
   "keywords": [],
   "author": "",
@@ -27,4 +27,3 @@
     "nodemon": "^3.1.9"
   }
 }
-

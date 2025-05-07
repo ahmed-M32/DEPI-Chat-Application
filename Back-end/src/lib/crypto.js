@@ -1,3 +1,4 @@
+import { log } from 'console';
 import crypto from 'crypto';
 
 
@@ -28,6 +29,13 @@ export function encrypt(text) {
 }
 
 export function decrypt({ encryptedData, iv, authTag }) {
+
+	if (encryptedData == "" || iv== ""|| authTag == "") {
+		console.log("Missing parameters for decryption");
+		
+		return "";
+	}
+	console.log('Input values:', { encryptedData, iv, authTag });
 	const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(ENCRYPTION_KEY, 'hex'), Buffer.from(iv, 'hex'));
 
 

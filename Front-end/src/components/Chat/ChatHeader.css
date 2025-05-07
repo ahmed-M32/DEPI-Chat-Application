@@ -1,0 +1,109 @@
+.chat-header {
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-md);
+    background-color: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    height: 72px;
+}
+
+.back-button {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    padding: var(--spacing-sm);
+    cursor: pointer;
+    margin-right: var(--spacing-sm);
+}
+
+@media (max-width: 768px) {
+    .back-button {
+        display: block;
+    }
+}
+
+.chat-info {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    gap: var(--spacing-md);
+}
+
+.chat-pic {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.chat-details {
+    min-width: 0;
+}
+
+.chat-name {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.status {
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.status::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.status.online {
+    color: var(--online-status);
+}
+
+.status.online::before {
+    background-color: var(--online-status);
+}
+
+.status.offline {
+    color: var(--text-secondary);
+}
+
+.status.offline::before {
+    background-color: var(--text-secondary);
+}
+
+.participants-count {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.chat-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.action-button {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    padding: var(--spacing-sm);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-speed) ease;
+}
+
+.action-button:hover {
+    background-color: var(--hover-bg);
+    color: var(--text-primary);
+}

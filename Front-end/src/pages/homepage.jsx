@@ -2,10 +2,10 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from "react";
 import { getUsers } from "../api/message-api.jsx";
-import { useUsers } from "../context/user-context.jsx";
+import { useUser } from "../context/user-context.jsx";
 
 const HomePage = () => {
-	const users = useUsers();
+	const users = useUser();
 
 	return (
 		<div>
