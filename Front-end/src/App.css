@@ -4,6 +4,25 @@
   padding: 2rem;
   text-align: center;
   max-height: 100vh;
+  overflow: hidden;
+}
+
+@media (max-width: 992px) {
+  #root {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  #root {
+    padding: 0.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  #root {
+    padding: 0;
+  }
 }
 
 .logo {

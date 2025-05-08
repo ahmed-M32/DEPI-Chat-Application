@@ -1,15 +1,16 @@
-import axios from "axios";
+import axiosInstance from "./axiosConfig";
 
-const API_URL = "http://localhost:5000/api/auth";
+const API_URL = "https://depi-back-production-fb68.up.railway.app/api/";
 
-// Token storage helpers
 export const setAuthToken = (token) => {
+   
     if (token) {
         localStorage.setItem('authToken', token);
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        // Set a session flag to indicate the user is logged in
+        localStorage.setItem('isLoggedIn', 'true');
     } else {
         localStorage.removeItem('authToken');
-        delete axios.defaults.headers.common['Authorization'];
+        localStorage.removeItem('isLoggedIn');
     }
 };
 
@@ -17,13 +18,14 @@ export const getStoredToken = () => {
     return localStorage.getItem('authToken');
 };
 
-const getAxiosConfig = (token = null) => ({
+export const isUserLoggedIn = () => {
+    return localStorage.getItem('isLoggedIn') === 'true';
+};
+
+const getAxiosConfig = {
     withCredentials: true,
-    headers: {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` })
-    }
-});
+   
+}
 
 /**
  * Login user
@@ -34,10 +36,12 @@ const getAxiosConfig = (token = null) => ({
  */
 export const login = async (credentials) => {
     try {
-        const response = await axios.post(`${API_URL}/login`, credentials, getAxiosConfig());
+        const response = await axiosInstance.post(`/auth/login`, credentials);
+        
         if (response.data?.data?.token) {
             setAuthToken(response.data.data.token);
         }
+        
         return {
             success: true,
             data: response.data
@@ -58,7 +62,7 @@ export const login = async (credentials) => {
  */
 export const register = async (userData) => {
     try {
-        const response = await axios.post(`${API_URL}/signup`, userData, getAxiosConfig());
+        const response = await axiosInstance.post(`/auth/signup`, userData);
         return {
             success: true,
             data: response.data
@@ -77,9 +81,9 @@ export const register = async (userData) => {
  * @param {string} token - Auth token
  * @returns {Promise<Object>} Response object
  */
-export const getCurrentUser = async (token) => {
+export const getCurrentUser = async () => {
     try {
-        const response = await axios.get(`${API_URL}/me`, getAxiosConfig(token));
+        const response = await axiosInstance.get(`/auth/me`);
         return {
             success: true,
             data: response.data
@@ -98,10 +102,10 @@ export const getCurrentUser = async (token) => {
  * @param {string} token - Auth token
  * @returns {Promise<Object>} Response object
  */
-export const logout = async (token) => {
+export const logout = async () => {
     try {
-        const response = await axios.post(`${API_URL}/logout`, {}, getAxiosConfig(token));
-        setAuthToken(null); // Clear the token on logout
+        const response = await axiosInstance.post(`/auth/logout`, {});
+        setAuthToken(null); 
         return {
             success: true,
             data: response.data

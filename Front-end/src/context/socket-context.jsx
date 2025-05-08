@@ -28,7 +28,10 @@ export const SocketProvider = ({ children }) => {
         }
 
         // Initialize socket connection
-        const newSocket = io('http://localhost:5000', {
+        const newSocket = io('https://depi-back-production-fb68.up.railway.app/', {
+            // Socket.io will automatically include cookies when withCredentials is true
+            withCredentials: true,
+            // Also include token in auth parameter as a fallback
             auth: {
                 token: `Bearer ${token}`
             },

@@ -7,7 +7,7 @@ const onlineUsers = new Map(); // Store online users with their socket IDs
 export const initializeSocket = (server) => {
     io = new Server(server, {
         cors: {
-            origin: "http://localhost:5173",
+            origin: "https://depi-front-delta.vercel.app",
             methods: ["GET", "POST"],
             credentials: true
         },

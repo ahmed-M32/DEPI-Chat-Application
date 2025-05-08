@@ -3,7 +3,7 @@
 import React from 'react';
 import './ChatHeader.css';
 
-const ChatHeader = ({ chat, onBack }) => {
+const ChatHeader = ({ chat, onBack, toggleSidebar }) => {
     const isGroup = chat?.isGroup;
     const name = isGroup ? chat.groupName : chat.members[0]?.fullName;
     const image = isGroup ? chat.groupPic : chat.members[0]?.profilePicture;
@@ -11,14 +11,22 @@ const ChatHeader = ({ chat, onBack }) => {
 
     return (
         <div className="chat-header">
+            <button
+                className="sidebar-toggle"
+                onClick={toggleSidebar}
+                title="Toggle Sidebar"
+            >
+                <i className="fas fa-bars"></i>
+            </button>
+
             <button className="back-button" onClick={onBack}>
                 <i className="fas fa-arrow-left"></i>
             </button>
-            
+
             <div className="chat-info">
-                <img 
-                    src={image || '/default-avatar.svg'} 
-                    alt={name} 
+                <img
+                    src={image || '/default-avatar.svg'}
+                    alt={name}
                     className="chat-pic"
                 />
                 <div className="chat-details">

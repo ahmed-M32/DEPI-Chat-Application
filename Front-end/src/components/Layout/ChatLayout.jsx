@@ -9,6 +9,7 @@ import './ChatLayout.css';
 const ChatLayout = ({ children }) => {
     const { user, loading } = useUser();
     const [selectedChat, setSelectedChat] = useState(null);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const navigate = useNavigate();
 
     if (loading) {
@@ -20,30 +21,48 @@ const ChatLayout = ({ children }) => {
         );
     }
 
-    if (!user) {
+   /* if (!user && !loading) {
         return <Navigate to="/login" />;
-    }
+    }*/
 
     const handleChatSelect = (chat) => {
         setSelectedChat(chat);
     };
 
+    const toggleSidebar = () => {
+        setSidebarOpen(!sidebarOpen);
+    };
+
     return (
-        <div className="chat-layout">
-            <Sidebar onChatSelect={handleChatSelect} selectedChat={selectedChat} />
+        <div className={`chat-layout ${sidebarOpen ? 'sidebar-open' : ''}`}>
+            <div className="sidebar-overlay" onClick={toggleSidebar}></div>
+            <Sidebar onChatSelect={(chat) => {
+                handleChatSelect(chat);
+                // Keep sidebar open after selecting a chat
+                // Don't close it automatically
+            }} selectedChat={selectedChat} />
             <main className="chat-main">
                 <div className="chat-header">
-                    <ThemeToggle />
                     <button 
-                        className="settings-button" 
-                        onClick={() => navigate('/profile-picture')} 
-                        title="Profile Settings"
+                        className="sidebar-toggle" 
+                        onClick={toggleSidebar}
+                        title="Toggle Sidebar"
                     >
-                        <i className="fas fa-cog"></i>
+                        <i className="fas fa-bars"></i>
                     </button>
+                    <div className="header-right">
+                        <ThemeToggle />
+                        <button 
+                            className="settings-button" 
+                            onClick={() => navigate('/profile-picture')} 
+                            title="Profile Settings"
+                        >
+                            <i className="fas fa-cog"></i>
+                        </button>
+                    </div>
                 </div>
                 <div className="chat-content">
-                    {React.cloneElement(children, { selectedChat })}
+                    {React.cloneElement(children, { selectedChat,toggleSidebar })}
                 </div>
             </main>
         </div>

@@ -25,7 +25,6 @@ const Sidebar = ({ onChatSelect }) => {
 		userGroups: [],
 	});
 	const [allChats, setAllChats] = useState([]);
-	const [currentChat, setCurrentChat] = useState(null);
 
 	const fetchChats = async () => {
 		try {
@@ -40,7 +39,7 @@ const Sidebar = ({ onChatSelect }) => {
 	};
 
 	useEffect(() => {
-		if (!user) {
+		if (!user && !loading) {
 			navigate("/login");
 			return;
 		}
@@ -121,12 +120,10 @@ const Sidebar = ({ onChatSelect }) => {
             const res = await createNewChat(targetUserId);
             if (res.success) {
                 const newChat = res.data.data;
-                // Update active chats state
                 setActiveChats(prev => ({
                     ...prev,
                     userChats: [...prev.userChats, newChat],
                 }));
-                // Immediately select the new chat
                 onChatSelect(newChat);
                 resetPopupState();
             }

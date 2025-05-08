@@ -131,3 +131,50 @@
 .signup-link a:hover {
 	color: var(--accent-hover);
 }
+
+/* Responsive styles */
+@media (max-width: 1200px) {
+	.login-card {
+		width: 30%;
+		margin-right: 30px;
+	}
+}
+
+@media (max-width: 992px) {
+	.login-card {
+		width: 40%;
+		margin-right: 20px;
+	}
+	
+	.img-container {
+		width: 50%;
+	}
+}
+
+@media (max-width: 768px) {
+	.login-container {
+		flex-direction: column;
+		padding: 20px;
+	}
+	
+	.login-card {
+		width: 80%;
+		margin-right: 0;
+		margin-bottom: 20px;
+	}
+	
+	.img-container {
+		display: none; /* Hide image on smaller screens */
+	}
+}
+
+@media (max-width: 576px) {
+	.login-card {
+		width: 100%;
+		padding: var(--spacing-lg);
+	}
+	
+	.login-form {
+		gap: var(--spacing-md);
+	}
+}

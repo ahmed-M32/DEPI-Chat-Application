@@ -5,12 +5,13 @@ export const generateJwtToken = (userId, res) => {
         expiresIn: "2d",
     });
 
-    // Set cookie
+    
     res.cookie("jwt", token, {
-        maxAge: 2 * 24 * 60 * 60 * 1000, // 2 days
+        maxAge: 2 * 24 * 60 * 60 * 1000, 
         httpOnly: true,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
+        sameSite: "None", 
+        secure: true, // Always set secure to true when sameSite is None
+        path: "/"    // Ensure cookie is available across all paths
     });
 
     return token;

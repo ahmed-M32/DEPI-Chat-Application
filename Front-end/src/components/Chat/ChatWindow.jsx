@@ -11,7 +11,7 @@ import {
 } from "../../api/message-api";
 import { convertImageToBase64 } from "../../utils/cloudinary";
 
-const ChatWindow = ({ chat, currentUser }) => {
+const ChatWindow = ({ chat, currentUser, toggleSidebar }) => {
 	const [messages, setMessages] = useState([]);
 	const [newMessage, setNewMessage] = useState("");
 	const [loading, setLoading] = useState(false);
@@ -182,6 +182,15 @@ const ChatWindow = ({ chat, currentUser }) => {
 	return (
 		<div className="chat-window">
 			<div className="chat-header">
+				{toggleSidebar && (
+					<button 
+						className="sidebar-toggle" 
+						onClick={toggleSidebar}
+						title="Toggle Sidebar"
+					>
+						<i className="fas fa-bars"></i>
+					</button>
+				)}
 				<div className="chat-info">
 					<img
 						src={
