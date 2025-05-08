@@ -1,6 +1,5 @@
 import axiosInstance from "./axiosConfig";
 
-const API_URL = "https://depi-back-production-fb68.up.railway.app/api/";
 
 export const setAuthToken = (token) => {
    
@@ -21,11 +20,6 @@ export const getStoredToken = () => {
 export const isUserLoggedIn = () => {
     return localStorage.getItem('isLoggedIn') === 'true';
 };
-
-const getAxiosConfig = {
-    withCredentials: true,
-   
-}
 
 /**
  * Login user
