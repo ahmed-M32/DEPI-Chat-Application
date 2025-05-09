@@ -19,7 +19,7 @@ DEPI-Chat-Application is a modern, secure real-time messaging platform built wit
 ## Key Features
 - **Secure Authentication**: User registration and login with JWT-based authentication
 - **Real-time Messaging**: Instant message delivery using Socket.IO
-- **End-to-End Encryption**: Messages are encrypted to ensure privacy and security
+- **Message Encryption**: Messages are encrypted to ensure privacy and security
 - **Private Chats**: One-on-one messaging between users
 - **Group Chats**: Create and manage group conversations with multiple participants
 - **Media Sharing**: Support for image uploads and sharing via Cloudinary integration
@@ -45,5 +45,5 @@ DEPI-Chat-Application is a modern, secure real-time messaging platform built wit
 
 ## Deployment
 - Frontend deployed on Vercel
-- Backend hosted with secure CORS configuration
+- Backend hosted with Railway
 - MongoDB Atlas for database hosting
