@@ -5,7 +5,7 @@ export const setAuthToken = (token) => {
    
     if (token) {
         localStorage.setItem('authToken', token);
-        // Set a session flag to indicate the user is logged in
+  
         localStorage.setItem('isLoggedIn', 'true');
     } else {
         localStorage.removeItem('authToken');
