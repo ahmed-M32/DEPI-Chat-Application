@@ -29,9 +29,9 @@ export const SocketProvider = ({ children }) => {
 
         // Initialize socket connection
         const newSocket = io('https://depi-back-production-fb68.up.railway.app/', {
-            // Socket.io will automatically include cookies when withCredentials is true
+           
             withCredentials: true,
-            // Also include token in auth parameter as a fallback
+          
             auth: {
                 token: `Bearer ${token}`
             },
@@ -41,7 +41,7 @@ export const SocketProvider = ({ children }) => {
             reconnectionDelay: 1000
         });
 
-        // Socket event handlers
+        
         newSocket.on('connect', () => {
             console.log('Connected to socket server');
         });
@@ -84,7 +84,7 @@ export const SocketProvider = ({ children }) => {
         });
 
         newSocket.on('message_read_by', ({ userId, messageId, chatId }) => {
-            // Handle message read status
+           
             console.log(`Message ${messageId} read by ${userId} in chat ${chatId}`);
         });
 
