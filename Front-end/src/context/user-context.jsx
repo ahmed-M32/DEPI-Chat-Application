@@ -30,7 +30,7 @@ export const UserProvider = ({ children }) => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Add a useEffect to ensure user data is always saved to localStorage when it changes
+ 
     useEffect(() => {
         if (user) {
             localStorage.setItem("user", JSON.stringify(user));
@@ -39,19 +39,18 @@ export const UserProvider = ({ children }) => {
 
     useEffect(() => {
         const validateAuth = async () => {
-            // IMPORTANT: First check if we have stored credentials and use them immediately
-            // This prevents the login screen flash and maintains state across refreshes
+            
             const loggedIn = isUserLoggedIn();
             const storedUser = localStorage.getItem("user");
             
             if (loggedIn && storedUser && storedUser !== "undefined") {
                 try {
-                    // We have stored credentials, use them immediately
+                    
                     setUser(JSON.parse(storedUser));
                     const storedToken = getStoredToken();
                     if (storedToken) {
                         setToken(storedToken);
-                        setAuthToken(storedToken); // Ensure token is set in auth module
+                        setAuthToken(storedToken); 
                     }
                 } catch (error) {
                     console.error("Error parsing user from localStorage:", error);
@@ -59,23 +58,21 @@ export const UserProvider = ({ children }) => {
                     localStorage.removeItem("user");
                 }
                 
-                // Set loading to false immediately if we have stored credentials
-                // This allows the UI to render without waiting for API response
+               
                 setLoading(false);
             }
             
-            // AFTER setting stored credentials, try to validate with the server
-            // But don't block the UI on this request
+            
             try {
                 console.log('Validating authentication with server...');
                 const response = await getCurrentUser();
                 
                 if (response.success && response.data && response.data.user) {
                     console.log('Authentication validated successfully');
-                    // Update with fresh user data from server
+               
                     const userData = response.data.user;
                     
-                    // Only update if we have valid user data
+                    
                     if (userData && typeof userData === 'object') {
                         setUser(userData);
                         localStorage.setItem("user", JSON.stringify(userData));
@@ -89,8 +86,7 @@ export const UserProvider = ({ children }) => {
                         // Don't overwrite existing valid user data with invalid data
                     }
                 } else if (response.code === 401) {
-                    // Only logout if we get a clear 401 Unauthorized
-                    // AND we don't have valid stored credentials
+                   
                     if (!loggedIn) {
                         console.log("Authentication failed: Unauthorized");
                         handleLogout();
@@ -98,8 +94,7 @@ export const UserProvider = ({ children }) => {
                 }
             } catch (error) {
                 console.error("Server validation failed:", error);
-                // CRITICAL: On network errors, DO NOT logout if we have stored credentials
-                // This ensures the app remains usable during connectivity issues
+                
                 if (!loggedIn && !storedUser) {
                     console.log("No stored credentials, redirecting to login");
                     handleLogout();
@@ -107,7 +102,7 @@ export const UserProvider = ({ children }) => {
                     console.log("Using stored credentials due to server error");
                 }
             } finally {
-                // Ensure loading is set to false in all cases
+           
                 setLoading(false);
             }
         };
@@ -135,10 +130,10 @@ export const UserProvider = ({ children }) => {
     }, [token]);
 
     const login = (userData, authToken) => {        
-        // Make sure userData is not undefined or null before setting
+       
         if (userData) {
             setUser(userData);
-            // Ensure we're storing a valid JSON string
+            
             localStorage.setItem("user", JSON.stringify(userData));
         }
         
