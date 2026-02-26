@@ -1,0 +1,163 @@
+/* ==========================================================================
+   Two-panel layout: sidebar (fixed width) + chat panel (flex-grow)
+   Full viewport height, no overlapping panels, flexbox-only.
+   ========================================================================== */
+
+.layout {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+/* Overlay: only used on mobile when sidebar is open; blocks main content */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 10;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--duration-normal), visibility var(--duration-normal);
+}
+
+.overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+@media (max-width: 768px) {
+  .overlay {
+    display: block;
+  }
+}
+
+/* Right panel: chat area (flex-grow, takes remaining width) */
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* Global top bar (sidebar toggle, theme, profile) */
+.topBar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 var(--space-4);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.sidebarToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color var(--duration-fast), color var(--duration-fast);
+}
+
+.sidebarToggle:hover {
+  background: var(--sidebar-item-hover);
+  color: var(--text-primary);
+}
+
+.sidebarToggle:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.topBarRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.iconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color var(--duration-fast), color var(--duration-fast);
+}
+
+.iconBtn:hover {
+  background: var(--sidebar-item-hover);
+  color: var(--color-primary);
+}
+
+.iconBtn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Wrapper for page content (chat list view or chat window) */
+.content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+/* Inner wrapper so child (ChatWindow) can flex and fill height */
+.contentInner {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.loadingScreen {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+}
+
+.loadingScreen [data-spinner] {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-subtle);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (min-width: 769px) {
+  .sidebarToggle {
+    display: none;
+  }
+}

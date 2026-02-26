@@ -1,7 +1,8 @@
 /* eslint-disable no-unused-vars */
 import axiosInstance from './axiosConfig';
 
-const API_URL = "https://depi-back-production-fb68.up.railway.app/api";
+
+const API_URL = "http://localhost:5000/api";
 
 const axiosConfig = {
     withCredentials: true
@@ -55,6 +56,32 @@ export const getChats = async () => {
     }
 };
 
+export const markChatRead = async (chatId) => {
+    try {
+        await axiosInstance.post(`/message/chat/${chatId}/read`, {}, axiosConfig);
+        return { success: true };
+    } catch (error) {
+        return {
+            success: false,
+            code: error.response?.status || 500,
+            message: error.response?.data?.message || "Failed to mark chat read"
+        };
+    }
+};
+
+export const markGroupRead = async (groupId) => {
+    try {
+        await axiosInstance.post(`/message/group/${groupId}/read`, {}, axiosConfig);
+        return { success: true };
+    } catch (error) {
+        return {
+            success: false,
+            code: error.response?.status || 500,
+            message: error.response?.data?.message || "Failed to mark group read"
+        };
+    }
+};
+
 export const createNewChat = async (userId) => {
     try {
         const response = await axiosInstance.post('/message/chat', { member: userId }, axiosConfig);
@@ -89,6 +116,7 @@ export const createNewGroup = async (data) => {
 
 export const sendMessage = async (chatId, messageData) => {
     try {
+        console.log(messageData)
         const response = await axiosInstance.post(`/message/send/${chatId}`, {
             content: messageData.content,
             image: messageData.image,
@@ -109,7 +137,7 @@ export const sendMessage = async (chatId, messageData) => {
 
 export const sendGroupMessage = async (groupId, messageData) => {
     try {
-        const response = await axios.post(`${API_URL}/message/group/send/${groupId}`, {
+        const response = await axiosInstance.post(`/message/group/send/${groupId}`, {
             content: messageData.content,
             ...(messageData.image && { image: messageData.image })
         }, axiosConfig);

@@ -1,0 +1,170 @@
+.root {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+  animation: messageIn var(--duration-normal) var(--ease-out);
+}
+
+.root.own {
+  flex-direction: row-reverse;
+}
+
+@keyframes messageIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.bubbleWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 75%;
+}
+
+.root.own .bubbleWrap {
+  align-items: flex-end;
+}
+
+.senderName {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+  margin-left: var(--space-3);
+}
+
+.root.own .senderName {
+  margin-left: 0;
+  margin-right: var(--space-3);
+}
+
+.bubble {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-xl);
+  max-width: 100%;
+  word-break: break-word;
+}
+
+.root:not(.own) .bubble {
+  background: var(--bubble-received);
+  color: var(--bubble-received-text);
+  border-bottom-left-radius: 4px;
+}
+
+.root.own .bubble {
+  background: var(--bubble-sent);
+  color: var(--bubble-sent-text);
+  border-bottom-right-radius: 4px;
+}
+
+.text {
+  margin: 0;
+  font-size: var(--text-base);
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.imageWrap {
+  max-width: 260px;
+  margin: var(--space-1) 0;
+}
+
+.imageWrap img {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: transform var(--duration-fast);
+}
+
+.imageWrap img:hover {
+  transform: scale(1.02);
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.time {
+  font-size: var(--text-xs);
+  opacity: 0.85;
+}
+
+.root:not(.own) .time {
+  color: var(--text-secondary);
+}
+
+.statusIcon {
+  font-size: 0.65rem;
+  opacity: 0.9;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-4);
+  animation: fadeIn var(--duration-normal) var(--ease-out);
+}
+
+.lightbox img {
+  max-width: 100%;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+}
+
+.lightboxClose {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  cursor: pointer;
+  transition: background-color var(--duration-fast);
+}
+
+.lightboxClose:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.lightboxClose:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  .bubbleWrap {
+    max-width: 85%;
+  }
+}

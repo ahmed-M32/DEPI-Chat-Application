@@ -2,11 +2,11 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../api/axiosConfig';
-import { useUser } from '../context/user-context';
+import { useAuth } from '../context/user-context';
 import './ProfilePictureUpload.css';
 
 const ProfilePictureUpload = () => {
-    const { user, updateUser } = useUser();
+    const { user, updateUser } = useAuth();
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState(null);
     const fileInputRef = useRef(null);
@@ -89,6 +89,8 @@ const ProfilePictureUpload = () => {
                         src={user?.profilePicture || '/default-avatar.svg'}
                         alt="Profile"
                         className="profile-picture"
+                        loading="lazy"
+                        decoding="async"
                     />
                     {isUploading && (
                         <div className="upload-overlay">

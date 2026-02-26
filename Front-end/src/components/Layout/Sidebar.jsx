@@ -1,311 +1,458 @@
-/* eslint-disable no-unused-vars */
 /* eslint-disable react/prop-types */
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "./Sidebar.css";
 import { useUser } from "../../context/user-context";
-import { getChats, createNewChat, createNewGroup } from "../../api/message-api";
-import { useSocket } from "../../context/socket-context";
+import {
+	getChats,
+	createNewChat,
+	createNewGroup,
+	markChatRead,
+	markGroupRead,
+} from "../../api/message-api";
+import { useSocketConnection } from "../../context/socket-context";
 import { convertImageToBase64 } from "../../utils/cloudinary";
+import ChatList, { getChatDisplay } from "../common/ChatList";
+import Profile from "../common/Profile";
+import InputField from "../common/InputField";
+import styles from "./Sidebar.module.css";
 
-const Sidebar = ({ onChatSelect }) => {
+const Sidebar = ({ onChatSelect, selectedChat, isOpen, onClose }) => {
 	const navigate = useNavigate();
 	const { user, logout, users } = useUser();
 	const [searchQuery, setSearchQuery] = useState("");
 	const [loading, setLoading] = useState(true);
-	const [showNewChatPopup, setShowNewChatPopup] = useState(false);
-	const [popupMode, setPopupMode] = useState('chat'); // 'chat' | 'group'
+	const [showModal, setShowModal] = useState(false);
+	const [popupMode, setPopupMode] = useState("chat");
 	const [selectedUsers, setSelectedUsers] = useState([]);
-	const [groupName, setGroupName] = useState('');
-	const [groupImage, setGroupImage] = useState('');
+	const [groupName, setGroupName] = useState("");
+	const [groupImage, setGroupImage] = useState("");
 	const [uploadingImage, setUploadingImage] = useState(false);
-	const { socket } = useSocket();
+	const { socket } = useSocketConnection();
 	const [activeChats, setActiveChats] = useState({
 		userChats: [],
 		userGroups: [],
 	});
 	const [allChats, setAllChats] = useState([]);
+	const selectedChatIdRef = useRef(null);
+
+	const userList = Array.isArray(users) ? users : users?.data ?? [];
+
+	useEffect(() => {
+		selectedChatIdRef.current = selectedChat?._id ?? null;
+	}, [selectedChat?._id]);
 
 	const fetchChats = async () => {
 		try {
 			const response = await getChats();
 			if (response.success) {
 				setActiveChats(response.data.data);
-                setLoading(false);
+				setLoading(false);
 			}
-		} catch (error) {
-			console.error("Failed to fetch chats:", error);
+		} catch (err) {
+			console.error("Failed to fetch chats:", err);
+			setLoading(false);
 		}
 	};
 
 	useEffect(() => {
-		if (!user && !loading) {
+		if (!user) {
 			navigate("/login");
 			return;
 		}
-
 		fetchChats();
 
-		if (socket) {
-			socket.on("new_chat", ({ chat }) => {
-				setActiveChats((prev) => ({
-					...prev,
-					userChats: [...prev.userChats, chat],
-				}));
-			});
+		if (!socket) return;
 
-			socket.on("new_group", ({ group }) => {
-				setActiveChats((prev) => ({
-					...prev,
-					userGroups: [...prev.userGroups, group],
-				}));
+		const handleNewChat = ({ chat }) => {
+			setActiveChats((prev) => ({
+				...prev,
+				userChats: [...prev.userChats, chat],
+			}));
+		};
+		const handleNewGroup = ({ group }) => {
+			setActiveChats((prev) => ({
+				...prev,
+				userGroups: [...prev.userGroups, group],
+			}));
+		};
+		const handleChatUpdated = ({ chatId, updates }) => {
+			setActiveChats((prev) => ({
+				userChats: prev.userChats.map((c) =>
+					c._id === chatId ? { ...c, ...updates } : c
+				),
+				userGroups: prev.userGroups.map((g) =>
+					g._id === chatId ? { ...g, ...updates } : g
+				),
+			}));
+		};
+		const handleNewMessage = ({ message, chatId }) => {
+			if (!chatId || !message) return;
+			const lastMessage = {
+				_id: message._id,
+				content: message.content,
+				sender: message.sender,
+				createdAt: message.createdAt,
+				time: message.time,
+			};
+			const isCurrentlyOpen = selectedChatIdRef.current === chatId;
+			setActiveChats((prev) => {
+				const list = prev.userChats || [];
+				const index = list.findIndex((c) => c._id === chatId);
+				if (index === -1) {
+					fetchChats();
+					return prev;
+				}
+				const chat = {
+					...list[index],
+					lastMessage,
+					unreadCount: isCurrentlyOpen
+						? (prev.userChats[index].unreadCount ?? 0)
+						: (prev.userChats[index].unreadCount ?? 0) + 1,
+				};
+				const rest = list.filter((_, i) => i !== index);
+				return { ...prev, userChats: [chat, ...rest] };
 			});
+		};
+		const handleNewGroupMessage = ({ message, groupId }) => {
+			if (!groupId || !message) return;
+			const lastMessage = {
+				_id: message._id,
+				content: message.content,
+				sender: message.sender,
+				createdAt: message.createdAt,
+				time: message.time,
+			};
+			const isCurrentlyOpen = selectedChatIdRef.current === groupId;
+			setActiveChats((prev) => {
+				const list = prev.userGroups || [];
+				const index = list.findIndex((g) => g._id === groupId);
+				if (index === -1) return prev;
+				const group = {
+					...list[index],
+					lastMessage,
+					unreadCount: isCurrentlyOpen
+						? (prev.userGroups[index].unreadCount ?? 0)
+						: (prev.userGroups[index].unreadCount ?? 0) + 1,
+				};
+				const rest = list.filter((_, i) => i !== index);
+				return { ...prev, userGroups: [group, ...rest] };
+			});
+		};
 
-			socket.on("chat_updated", ({ chatId, updates }) => {
-				setActiveChats((prev) => ({
-					userChats: prev.userChats.map((chat) =>
-						chat._id === chatId ? { ...chat, ...updates } : chat
-					),
-					userGroups: prev.userGroups.map((group) =>
-						group._id === chatId ? { ...group, ...updates } : group
-					),
-				}));
-			});
-		}
+		socket.on("new_chat", handleNewChat);
+		socket.on("new_group", handleNewGroup);
+		socket.on("chat_updated", handleChatUpdated);
+		socket.on("new_message", handleNewMessage);
+		socket.on("message_notification", handleNewMessage);
+		socket.on("new_group_message", handleNewGroupMessage);
+		socket.on("group_message_notification", handleNewGroupMessage);
 
 		return () => {
-			if (socket) {
-				socket.off("new_chat");
-				socket.off("new_group");
-				socket.off("chat_updated");
-			}
+			socket.off("new_chat", handleNewChat);
+			socket.off("new_group", handleNewGroup);
+			socket.off("chat_updated", handleChatUpdated);
+			socket.off("new_message", handleNewMessage);
+			socket.off("message_notification", handleNewMessage);
+			socket.off("new_group_message", handleNewGroupMessage);
+			socket.off("group_message_notification", handleNewGroupMessage);
 		};
-	}, [user, socket, navigate]);
-
-	const handleSearch = (e) => {
-		setSearchQuery(e.target.value);
-	};
-
-	const filteredChats = allChats.filter((chat) =>
-		chat.members[1]?.fullName?.toLowerCase().includes(searchQuery.toLowerCase())
-	);
-
-	const handleLogout = () => {
-		logout();
-		navigate("/login");
-	};
+	}, [user, socket, navigate, loading]);
 
 	useEffect(() => {
-		const userChats = (activeChats.userChats || []).map((chat) => ({
-			...chat,
+		const userChats = (activeChats.userChats || []).map((c) => ({
+			...c,
 			isGroup: false,
 		}));
-		const userGroups = (activeChats.userGroups || []).map((group) => ({
-			...group,
+		const userGroups = (activeChats.userGroups || []).map((g) => ({
+			...g,
 			isGroup: true,
 		}));
-		setAllChats([...userChats, ...userGroups]);
+		const merged = [...userChats, ...userGroups];
+		const getSortTime = (item) => {
+			if (item.lastMessage?.createdAt)
+				return new Date(item.lastMessage.createdAt).getTime();
+			if (item.updatedAt) return new Date(item.updatedAt).getTime();
+			return 0;
+		};
+		merged.sort((a, b) => getSortTime(b) - getSortTime(a));
+		setAllChats(merged);
 	}, [activeChats]);
 
-	const resetPopupState = () => {
-        setPopupMode('chat');
-        setSelectedUsers([]);
-        setGroupName('');
-        setGroupImage('');
-        setShowNewChatPopup(false);
-    };
+	const filteredChats = allChats.filter((chat) => {
+		const { name } = getChatDisplay(chat, user?._id);
+		return name.toLowerCase().includes(searchQuery.toLowerCase().trim());
+	});
 
-    const handleCreateChat = async (targetUserId) => {
-        try {
-            const res = await createNewChat(targetUserId);
-            if (res.success) {
-                const newChat = res.data.data;
-                setActiveChats(prev => ({
-                    ...prev,
-                    userChats: [...prev.userChats, newChat],
-                }));
-                onChatSelect(newChat);
-                resetPopupState();
-            }
-        } catch (error) {
-            console.error('Create chat failed', error);
-        }
-    };
+	const handleSelectChat = async (chat) => {
+		const id = chat._id;
+		const isGroup = chat.isGroup;
+		if ((chat.unreadCount ?? 0) > 0) {
+			if (isGroup) {
+				await markGroupRead(id);
+			} else {
+				await markChatRead(id);
+			}
+			setActiveChats((prev) => ({
+				...prev,
+				userChats: prev.userChats.map((c) =>
+					c._id === id && !isGroup ? { ...c, unreadCount: 0 } : c
+				),
+				userGroups: prev.userGroups.map((g) =>
+					g._id === id && isGroup ? { ...g, unreadCount: 0 } : g
+				),
+			}));
+		}
+		onChatSelect(chat);
+	};
 
-    const handleImageUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        setUploadingImage(true);
-        const result = await convertImageToBase64(file);
-        setUploadingImage(false);
-        if (result.success) {
-            setGroupImage(result.url); // This is now a base64 string
-        } else {
-            alert('Image conversion failed: ' + result.error);
-        }
-    };
+	const resetModal = () => {
+		setPopupMode("chat");
+		setSelectedUsers([]);
+		setGroupName("");
+		setGroupImage("");
+		setShowModal(false);
+	};
 
-    const toggleSelectUser = (id) => {
-        setSelectedUsers(prev => prev.includes(id) ? prev.filter(u => u !== id) : [...prev, id]);
-    };
+	const handleCreateChat = async (targetUserId) => {
+		try {
+			const res = await createNewChat(targetUserId);
+			if (res.success) {
+				const newChat = res.data.data;
+				setActiveChats((prev) => ({
+					...prev,
+					userChats: [...prev.userChats, newChat],
+				}));
+				onChatSelect(newChat);
+				resetModal();
+			}
+		} catch (err) {
+			console.error("Create chat failed", err);
+		}
+	};
 
-    const handleCreateGroup = async () => {
-        if (!groupName.trim() || selectedUsers.length === 0) {
-            alert('Enter group name and select members');
-            return;
-        }
-        try {
-            const payload = { groupName: groupName.trim(), members: selectedUsers };
-            if (groupImage) payload.groupImg = groupImage;
-            const res = await createNewGroup(payload);
-            if (res.success) {
-                const newGroup = res.data.data;
-                // Update active chats state with the new group
-                setActiveChats(prev => ({
-                    ...prev,
-                    userGroups: [...prev.userGroups, newGroup],
-                }));
-                // Immediately select the new group
-                onChatSelect(newGroup);
-                resetPopupState();
-            }
-        } catch (error) {
-            console.error('Create group failed', error);
-        }
-    };
+	const handleImageUpload = async (e) => {
+		const file = e.target.files[0];
+		if (!file) return;
+		setUploadingImage(true);
+		const result = await convertImageToBase64(file);
+		setUploadingImage(false);
+		if (result.success) setGroupImage(result.url);
+		else alert("Image conversion failed: " + result.error);
+	};
+
+	const handleCreateGroup = async () => {
+		if (!groupName.trim() || selectedUsers.length === 0) {
+			alert("Enter group name and select at least one member.");
+			return;
+		}
+		try {
+			const payload = { groupName: groupName.trim(), members: selectedUsers };
+			if (groupImage) payload.groupImg = groupImage;
+			const res = await createNewGroup(payload);
+			if (res.success) {
+				const newGroup = res.data.data;
+				setActiveChats((prev) => ({
+					...prev,
+					userGroups: [...prev.userGroups, newGroup],
+				}));
+				onChatSelect(newGroup);
+				resetModal();
+			}
+		} catch (err) {
+			console.error("Create group failed", err);
+		}
+	};
 
 	return (
-		<div className="sidebar">
-			<div className="sidebar-header">
-				<div className="sidebar-profile">
-					<div
-						className="profile-info"
-						onClick={() => navigate("/profile-picture")}>
-						<img
-							src={user?.profilePicture || "/default-avatar.svg"}
-							alt="Profile"
-							className="profile-pic"
+		<>
+			<aside
+				className={`${styles.sidebar} ${isOpen ? styles.open : ""}`}
+				aria-label="Chat list"
+			>
+				<div className={styles.header}>
+					<Profile
+						user={user}
+						onProfileClick={() => navigate("/profile-picture")}
+						onLogout={logout}
+					/>
+					<div className={styles.searchWrap}>
+						<InputField
+							type="search"
+							value={searchQuery}
+							onChange={setSearchQuery}
+							placeholder="Search chats…"
+							ariaLabel="Search chats"
+							leadingIcon={<i className="fas fa-search" />}
+							className={styles.searchInputBox}
 						/>
-						<div className="profile-text">
-							<h3>{user?.fullName}</h3>
-							<p>{user?.email}</p>
-						</div>
 					</div>
-					<button onClick={handleLogout} className="logout-button">
-						<i className="fas fa-sign-out-alt"></i>
-					</button>
 				</div>
-				<div className="search-container">
-					<i className="fas fa-search search-icon"></i>
-					<input
-						type="text"
-						placeholder="Search chats..."
-						value={searchQuery}
-						onChange={handleSearch}
-						className="search-input"
+
+				<div className={styles.chatsWrap}>
+					<ChatList
+						chats={filteredChats}
+						selectedChatId={selectedChat?._id}
+						onSelectChat={handleSelectChat}
+						currentUserId={user?._id}
+						loading={loading}
+						emptyMessage="No chats yet. Start a new conversation."
 					/>
 				</div>
-			</div>
 
-			<div className="chats-container">
-				{loading ? (
-					<div className="loading-chats">
-						<i className="fas fa-spinner fa-spin"></i>
-						<span>Loading chats...</span>
-					</div>
-				) : filteredChats.length > 0 ? (
-					filteredChats.map((chat) => (
-						<div
-							key={chat._id}
-							className="chat-item"
-							onClick={() => onChatSelect(chat)}>
-							<img
-								src={
-									chat.isGroup
-										? chat.groupImg|| "/default-avatar.svg"
-										: chat.members[1]?.profilePicture || "/default-avatar.svg"
-								}
-								alt={chat.groupName}
-								className="chat-pic"
-							/>
-							<div className="chat-info">
-								<h4>{chat.isGroup?chat.groupName:chat.members[1]?.fullName}</h4>
-								<p className="last-message">{chat.lastMessage?.content || "No messages yet"}</p>
-							</div>
+				<div className={styles.footer}>
+					<button
+						type="button"
+						className={styles.newChatBtn}
+						onClick={() => setShowModal(true)}
+						aria-label="New chat or group"
+					>
+						<i className="fas fa-plus" aria-hidden />
+						New chat
+					</button>
+				</div>
+			</aside>
+
+			{showModal && (
+				<div
+					className={styles.overlay}
+					onClick={resetModal}
+					onKeyDown={(e) => e.key === "Escape" && resetModal()}
+					role="dialog"
+					aria-modal="true"
+					aria-labelledby="new-chat-title"
+				>
+					<div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+						<div className={styles.modalHeader}>
+							<h2 id="new-chat-title" className={styles.modalTitle}>
+								New conversation
+							</h2>
+							<button
+								type="button"
+								className={styles.modalClose}
+								onClick={resetModal}
+								aria-label="Close"
+							>
+								<i className="fas fa-times" />
+							</button>
 						</div>
-					))
-				) : (
-					<div className="no-chats">
-						<i className="fas fa-comments"></i>
-						<p>No chats found</p>
+						<div className={styles.tabs}>
+							<button
+								type="button"
+								className={`${styles.tab} ${popupMode === "chat" ? styles.active : ""}`}
+								onClick={() => setPopupMode("chat")}
+								aria-pressed={popupMode === "chat"}
+							>
+								Chat
+							</button>
+							<button
+								type="button"
+								className={`${styles.tab} ${popupMode === "group" ? styles.active : ""}`}
+								onClick={() => setPopupMode("group")}
+								aria-pressed={popupMode === "group"}
+							>
+								Group
+							</button>
+						</div>
+						<div className={styles.modalBody}>
+							{popupMode === "chat" && (
+								<>
+									<p className={styles.sectionTitle}>Select a user</p>
+									<div className={styles.userList}>
+										{userList
+											.filter((u) => u._id !== user?._id)
+											.map((u) => (
+												<button
+													key={u._id}
+													type="button"
+													className={styles.userItem}
+													onClick={() => handleCreateChat(u._id)}
+												>
+													<img
+														src={u.profilePicture || "/default-avatar.svg"}
+														alt=""
+														loading="lazy"
+													/>
+													<span>{u.fullName}</span>
+												</button>
+											))}
+									</div>
+								</>
+							)}
+							{popupMode === "group" && (
+								<div className={styles.groupForm}>
+									<label className={styles.sectionTitle} htmlFor="group-name">
+										Group name
+									</label>
+									<input
+										id="group-name"
+										type="text"
+										placeholder="Group name"
+										value={groupName}
+										onChange={(e) => setGroupName(e.target.value)}
+									/>
+									<label className={styles.uploadLabel}>
+										<i className="fas fa-image" />
+										Upload group image
+										<input
+											type="file"
+											accept="image/*"
+											onChange={handleImageUpload}
+											style={{ display: "none" }}
+										/>
+									</label>
+									{uploadingImage && <p>Uploading…</p>}
+									{groupImage && (
+										<img
+											src={groupImage}
+											alt=""
+											style={{
+												width: 60,
+												height: 60,
+												objectFit: "cover",
+												borderRadius: 8,
+											}}
+										/>
+									)}
+									<p className={styles.sectionTitle}>Select members</p>
+									<div className={styles.checkboxList}>
+										{userList
+											.filter((u) => u._id !== user?._id)
+											.map((u) => (
+												<label key={u._id} className={styles.checkboxItem}>
+													<input
+														type="checkbox"
+														checked={selectedUsers.includes(u._id)}
+														onChange={() =>
+															setSelectedUsers((prev) =>
+																prev.includes(u._id)
+																	? prev.filter((id) => id !== u._id)
+																	: [...prev, u._id]
+															)
+														}
+													/>
+													<span>{u.fullName}</span>
+												</label>
+											))}
+									</div>
+								</div>
+							)}
+						</div>
+						{popupMode === "group" && (
+							<div className={styles.modalActions}>
+								<button
+									type="button"
+									className={styles.createBtn}
+									onClick={handleCreateGroup}
+									disabled={!groupName.trim() || selectedUsers.length === 0}
+								>
+									Create group
+								</button>
+							</div>
+						)}
 					</div>
-				)}
-			</div>
-
-			<button
-				className="new-chat-button"
-				onClick={() => setShowNewChatPopup(true)}>
-				<i className="fas fa-plus"></i>
-				New Chat
-			</button>
-
-			{showNewChatPopup && (
-                <div className="popup-overlay">
-                    <div className="chat-popup">
-                        <div className="mode-switch">
-                            <button className={popupMode==='chat'?'active':''} onClick={() => setPopupMode('chat')}>Chat</button>
-                            <button className={popupMode==='group'?'active':''} onClick={() => setPopupMode('group')}>Group</button>
-                            <button className="close-button" onClick={resetPopupState}>&times;</button>
-                        </div>
-
-                        {popupMode === 'chat' && (
-                            <div>
-                                <h4>Select user</h4>
-                                <div className="popup-body">
-                                    {users.data.filter(u=>u._id!==user._id).map(u => (
-                                        <div key={u._id} className="user-select-item chat-item" onClick={() => handleCreateChat(u._id)}>
-                                            <img src={u.profilePicture || '/default-avatar.svg'} className="chat-pic" />
-                                            <span>{u.fullName}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {popupMode === 'group' && (
-                            <div>
-                                <input
-                                    type="text"
-                                    placeholder="Group name"
-                                    className="group-name-input"
-                                    value={groupName}
-                                    onChange={e=>setGroupName(e.target.value)}
-                                />
-                                <div className="file-upload-container">
-                                    <label className="file-upload-label">
-                                        <i className="fas fa-image"></i> Upload Group Image
-                                        <input type="file" accept="image/*" onChange={handleImageUpload} style={{display: 'none'}} />
-                                    </label>
-                                </div>
-                                {uploadingImage && <p>Uploading image...</p>}
-                                {groupImage && <img src={groupImage} alt="group" style={{width:'60px',borderRadius:'8px',margin:'6px 0'}} />}
-                                <h4>Select members</h4>
-                                <div className="popup-body">
-                                    {users.data.filter(u=>u._id!==user._id).map(u => (
-                                        <label key={u._id} className="user-select-item chat-item" style={{display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)'}}>
-                                            <input type="checkbox" checked={selectedUsers.includes(u._id)} onChange={()=>toggleSelectUser(u._id)} /> {u.fullName}
-                                        </label>
-                                    ))}
-                                </div>
-                                <div className="popup-actions">
-                                    <button onClick={handleCreateGroup} className="new-chat-button" style={{margin:0}}>Create</button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-		</div>
+				</div>
+			)}
+		</>
 	);
 };
 

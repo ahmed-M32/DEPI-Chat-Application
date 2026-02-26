@@ -1,72 +1,84 @@
 /* eslint-disable react/prop-types */
-import React, { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
-import { useUser } from '../../context/user-context';
-import Sidebar from './Sidebar';
-import ThemeToggle from './ThemeToggle';
-import './ChatLayout.css';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/user-context";
+import Sidebar from "./Sidebar";
+import ThemeToggle from "./ThemeToggle";
+import styles from "./ChatLayout.module.css";
 
 const ChatLayout = ({ children }) => {
-    const { user, loading } = useUser();
-    const [selectedChat, setSelectedChat] = useState(null);
-    const [sidebarOpen, setSidebarOpen] = useState(false);
-    const navigate = useNavigate();
+	const { user, loading } = useAuth();
+	const [selectedChat, setSelectedChat] = useState(null);
+	const [sidebarOpen, setSidebarOpen] = useState(false);
+	const navigate = useNavigate();
 
-    if (loading) {
-        return (
-            <div className="loading-screen">
-                <i className="fas fa-spinner fa-spin"></i>
-                <span>Loading...</span>
-            </div>
-        );
-    }
+	const handleChatSelect = (chat) => {
+		setSelectedChat(chat);
+		setSidebarOpen(false);
+	};
 
-   /* if (!user && !loading) {
-        return <Navigate to="/login" />;
-    }*/
+	const toggleSidebar = () => setSidebarOpen((o) => !o);
+	const closeSidebar = () => setSidebarOpen(false);
 
-    const handleChatSelect = (chat) => {
-        setSelectedChat(chat);
-    };
+	if (loading) {
+		return (
+			<div className={styles.loadingScreen} role="status" aria-live="polite">
+				<div data-spinner aria-hidden />
+				<span>Loading…</span>
+			</div>
+		);
+	}
 
-    const toggleSidebar = () => {
-        setSidebarOpen(!sidebarOpen);
-    };
-
-    return (
-        <div className={`chat-layout ${sidebarOpen ? 'sidebar-open' : ''}`}>
-            <div className="sidebar-overlay" onClick={toggleSidebar}></div>
-            <Sidebar onChatSelect={(chat) => {
-                handleChatSelect(chat);
-                // Keep sidebar open after selecting a chat
-                // Don't close it automatically
-            }} selectedChat={selectedChat} />
-            <main className="chat-main">
-                <div className="chat-header">
-                    <button 
-                        className="sidebar-toggle" 
-                        onClick={toggleSidebar}
-                        title="Toggle Sidebar"
-                    >
-                        <i className="fas fa-bars"></i>
-                    </button>
-                    <div className="header-right">
-                        <ThemeToggle />
-                        <button 
-                            className="settings-button" 
-                            onClick={() => navigate('/profile-picture')} 
-                            title="Profile Settings"
-                        >
-                            <i className="fas fa-cog"></i>
-                        </button>
-                    </div>
-                </div>
-                <div className="chat-content">
-                    {React.cloneElement(children, { selectedChat,toggleSidebar })}
-                </div>
-            </main>
-        </div>
-    );
+	return (
+		<div className={styles.layout}>
+			<div
+				className={`${styles.overlay} ${sidebarOpen ? styles.visible : ""}`}
+				onClick={closeSidebar}
+				onKeyDown={(e) => e.key === "Escape" && closeSidebar()}
+				aria-hidden={!sidebarOpen}
+				tabIndex={-1}
+			/>
+			<Sidebar
+				onChatSelect={handleChatSelect}
+				selectedChat={selectedChat}
+				isOpen={sidebarOpen}
+				onClose={closeSidebar}
+			/>
+			<main className={styles.main} id="main-content">
+				<header className={styles.topBar}>
+					<button
+						type="button"
+						className={styles.sidebarToggle}
+						onClick={toggleSidebar}
+						aria-label="Open menu"
+						aria-expanded={sidebarOpen}
+					>
+						<i className="fas fa-bars" aria-hidden />
+					</button>
+					<div className={styles.topBarRight}>
+						<ThemeToggle />
+						<button
+							type="button"
+							className={styles.iconBtn}
+							onClick={() => navigate("/profile-picture")}
+							aria-label="Profile settings"
+							title="Profile settings"
+						>
+							<i className="fas fa-cog" aria-hidden />
+						</button>
+					</div>
+				</header>
+				<div className={styles.content}>
+					<div className={styles.contentInner}>
+						{React.cloneElement(children, {
+							selectedChat,
+							toggleSidebar,
+						})}
+					</div>
+				</div>
+			</main>
+		</div>
+	);
 };
 
 export default ChatLayout;

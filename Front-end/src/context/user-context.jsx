@@ -1,20 +1,46 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable react/prop-types */
-import React, { createContext, useState, useContext, useEffect } from "react";
-import { getCurrentUser, getStoredToken, setAuthToken, isUserLoggedIn } from "../api/auth.jsx";
+import React, {
+    createContext,
+    useState,
+    useContext,
+    useEffect,
+    useCallback,
+    useMemo,
+} from "react";
+import { useNavigate } from "react-router-dom";
+import { getCurrentUser, logout as logoutApi } from "../api/auth.jsx";
 import { getUsers } from "../api/message-api.jsx";
 
-const UserContext = createContext();
+const AuthContext = createContext();
+const UsersDirectoryContext = createContext();
 
-export const useUser = () => {
-    const context = useContext(UserContext);
+export const useAuth = () => {
+    const context = useContext(AuthContext);
     if (!context) {
-        throw new Error("useUser must be used within a UserProvider");
+        throw new Error("useAuth must be used within an AuthContext provider");
     }
     return context;
 };
 
+export const useUsersDirectory = () => {
+    const context = useContext(UsersDirectoryContext);
+    if (!context) {
+        throw new Error("useUsersDirectory must be used within a UsersDirectoryContext provider");
+    }
+    return context;
+};
+
+export const useUser = () => {
+    const auth = useAuth();
+    const { users } = useUsersDirectory();
+    return { ...auth, users };
+};
+
 export const UserProvider = ({ children }) => {
+    const navigate = useNavigate();
+
+    // Only user display data in localStorage (non-sensitive, for instant UI load)
     const [user, setUser] = useState(() => {
         try {
             const storedUser = localStorage.getItem("user");
@@ -26,83 +52,42 @@ export const UserProvider = ({ children }) => {
         }
     });
 
-    const [token, setToken] = useState(() => getStoredToken());
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
 
- 
+    // Sync user display data to localStorage whenever it changes
     useEffect(() => {
         if (user) {
             localStorage.setItem("user", JSON.stringify(user));
         }
     }, [user]);
 
+    // On mount, validate auth with server via cookie
     useEffect(() => {
         const validateAuth = async () => {
-            
-            const loggedIn = isUserLoggedIn();
-            const storedUser = localStorage.getItem("user");
-            
-            if (loggedIn && storedUser && storedUser !== "undefined") {
-                try {
-                    
-                    setUser(JSON.parse(storedUser));
-                    const storedToken = getStoredToken();
-                    if (storedToken) {
-                        setToken(storedToken);
-                        setAuthToken(storedToken); 
-                    }
-                } catch (error) {
-                    console.error("Error parsing user from localStorage:", error);
-                    // Clear the invalid data
-                    localStorage.removeItem("user");
-                }
-                
-               
-                setLoading(false);
-            }
-            
-            
             try {
-                console.log('Validating authentication with server...');
-                const response = await getCurrentUser();
-                
+                console.log("Validating authentication with server...");
+                const response = await getCurrentUser(); // cookie is sent automatically
+                console.log(response)
                 if (response.success && response.data && response.data.user) {
-                    console.log('Authentication validated successfully');
-               
+                    console.log("Authentication validated successfully");
                     const userData = response.data.user;
-                    
-                    
-                    if (userData && typeof userData === 'object') {
+                    if (userData && typeof userData === "object") {
                         setUser(userData);
                         localStorage.setItem("user", JSON.stringify(userData));
-                        
-                        if (response.data.token) {
-                            setToken(response.data.token);
-                            setAuthToken(response.data.token);
-                        }
-                    } else {
-                        console.warn('Received invalid user data from server:', userData);
-                        // Don't overwrite existing valid user data with invalid data
                     }
                 } else if (response.code === 401) {
-                   
-                    if (!loggedIn) {
-                        console.log("Authentication failed: Unauthorized");
-                        handleLogout();
-                    }
+                    console.log("Authentication failed: Unauthorized");
+                    handleLogout();
                 }
             } catch (error) {
                 console.error("Server validation failed:", error);
-                
-                if (!loggedIn && !storedUser) {
-                    console.log("No stored credentials, redirecting to login");
+                // If server is down but we have cached user, keep them logged in
+                const storedUser = localStorage.getItem("user");
+                if (!storedUser) {
                     handleLogout();
-                } else {
-                    console.log("Using stored credentials due to server error");
                 }
             } finally {
-           
                 setLoading(false);
             }
         };
@@ -110,10 +95,9 @@ export const UserProvider = ({ children }) => {
         validateAuth();
     }, []);
 
+    // Fetch users list once on mount
     useEffect(() => {
         const fetchUsers = async () => {
-            if (!token) return;
-
             try {
                 const response = await getUsers();
                 if (response.success) {
@@ -124,67 +108,62 @@ export const UserProvider = ({ children }) => {
             }
         };
 
-        if (token) {
-            fetchUsers();
-        }
-    }, [token]);
+        fetchUsers();
+    }, []);
 
-    const login = (userData, authToken) => {        
-       
+    const login = useCallback((userData) => {
         if (userData) {
             setUser(userData);
-            
             localStorage.setItem("user", JSON.stringify(userData));
         }
-        
-        if (authToken) {
-            setToken(authToken);
-            setAuthToken(authToken);
-        }
-    };
+    }, []);
 
-    const handleLogout = () => {
+    const handleLogout = useCallback(() => {
         setUser(null);
-        setToken(null);
         setUsers([]);
-        setAuthToken(null);
         localStorage.removeItem("user");
-    };
+    }, [navigate]);
 
-    const logout = async () => {
-        if (token) {
-            try {
-                const response = await import("../api/auth.jsx").then(module => module.logout(token));
-                if (response.success) {
-                    handleLogout();
-                }
-            } catch (error) {
-                console.error("Logout failed:", error);
+    const logout = useCallback(async () => {
+        try {
+            const response = await logoutApi(); // tells server to clear the cookie
+            if (response.success) {
                 handleLogout();
             }
-        } else {
-            handleLogout();
+        } catch (error) {
+            console.error("Logout failed:", error);
+            handleLogout(); // logout locally anyway
         }
-    };
+    }, [handleLogout]);
 
-    const updateUser = (newUserData) => {
+    const updateUser = useCallback((newUserData) => {
         setUser(newUserData);
         localStorage.setItem("user", JSON.stringify(newUserData));
-    };
-    
-    const value = {
-        user,
-        token,
-        users,
-        loading,
-        login,
-        logout,
-        updateUser
-    };
+    }, []);
+
+    const authValue = useMemo(
+        () => ({
+            user,
+            loading,
+            login,
+            logout,
+            updateUser,
+        }),
+        [user, loading, login, logout, updateUser]
+    );
+
+    const usersValue = useMemo(
+        () => ({
+            users,
+        }),
+        [users]
+    );
 
     return (
-        <UserContext.Provider value={value}>
-            {!loading && children}
-        </UserContext.Provider>
+        <AuthContext.Provider value={authValue}>
+            <UsersDirectoryContext.Provider value={usersValue}>
+                {children}
+            </UsersDirectoryContext.Provider>
+        </AuthContext.Provider>
     );
 };

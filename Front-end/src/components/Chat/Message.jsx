@@ -1,86 +1,92 @@
 /* eslint-disable react/prop-types */
-/* eslint-disable no-unused-vars */
 import React, { useState } from "react";
-import "./Message.css";
+import styles from "./Message.module.css";
 
 const Message = ({ message, isOwnMessage, sender }) => {
-	const [showImageLightbox, setShowImageLightbox] = useState(false);
+	const [showLightbox, setShowLightbox] = useState(false);
 	const formattedTime =
 		message.time ||
-		new Date(message.timestamp).toLocaleTimeString([], {
-			hour: "2-digit",
-			minute: "2-digit",
-		});
+		(message.createdAt &&
+			new Date(message.createdAt).toLocaleTimeString([], {
+				hour: "2-digit",
+				minute: "2-digit",
+			})) ||
+		"";
 
-	// Check if the message contains an image
-	const isImageMessage =
-		message.image ||
-		(typeof message.content === "string" && message.content === "Image");
-
-	const handleImageClick = () => {
-		setShowImageLightbox(true);
-	};
-
-	const closeLightbox = () => {
-		setShowImageLightbox(false);
-	};
+	const hasImage = message.image || message.content === "Image";
 
 	return (
 		<div
-			className={`message ${isOwnMessage ? "message-own" : "message-other"}`}>
-			{!isOwnMessage && (
+			className={`${styles.root} ${isOwnMessage ? styles.own : ""}`}
+			role="listitem"
+		>
+			{!isOwnMessage && sender && (
 				<img
-					src={sender?.profilePicture || "/default-avatar.svg"}
-					alt={sender?.fullName}
-					className="message-avatar"
+					src={sender.profilePicture || "/default-avatar.svg"}
+					alt=""
+					className={styles.avatar}
+					loading="lazy"
+					decoding="async"
+					width={28}
+					height={28}
 				/>
 			)}
-			<div className="message-content">
-				{!isOwnMessage && (
-					<span className="message-sender">{sender?.fullName}</span>
+			<div className={styles.bubbleWrap}>
+				{!isOwnMessage && sender && (
+					<span className={styles.senderName}>{sender.fullName}</span>
 				)}
-				<div className="message-bubble">
-					{
-						/*isImageMessage ? (
-                        <div className="message-image-container">
-                            <img 
-                                src={message.image} 
-                                alt="Shared image" 
-                                className="message-image"
-                                onClick={handleImageClick}
-                            />
-                        </div>
-                    ) : (
-                        <p className="message-text">{message.content}</p>
-                    )*/
-						isImageMessage ? (
-							<div className="message-image-container">
-								<img
-									src={message.image}
-									alt="Shared image"
-									className="message-image"
-									onClick={handleImageClick}
-								/>
-							</div>
-						) : (
-							<></>
-						)
-					}
-                    {
-                        <p className="message-text">{message.content}</p>
-                    }
-
-					<span className="message-time">{formattedTime}</span>
+				<div className={styles.bubble}>
+					{hasImage && message.image && (
+						<div className={styles.imageWrap}>
+							<img
+								src={message.image}
+								alt="Shared content"
+								loading="lazy"
+								decoding="async"
+								onClick={() => setShowLightbox(true)}
+							/>
+						</div>
+					)}
+					{message.content &&
+						message.content !== "Image" && (
+							<p className={styles.text}>{message.content}</p>
+						)}
+					<div className={styles.meta}>
+						<span className={styles.time}>{formattedTime}</span>
+						{isOwnMessage && (
+							<span
+								className={styles.statusIcon}
+								title="Sent"
+								aria-label="Sent"
+							>
+								<i className="fas fa-check" aria-hidden />
+							</span>
+						)}
+					</div>
 				</div>
 			</div>
 
-			{/* Image lightbox */}
-			{showImageLightbox && (
-				<div className="attachment-lightbox" onClick={closeLightbox}>
-					<button className="close-button" onClick={closeLightbox}>
-						<i className="fas fa-times"></i>
+			{showLightbox && message.image && (
+				<div
+					className={styles.lightbox}
+					onClick={() => setShowLightbox(false)}
+					role="dialog"
+					aria-modal="true"
+					aria-label="Image preview"
+				>
+					<button
+						type="button"
+						className={styles.lightboxClose}
+						onClick={() => setShowLightbox(false)}
+						aria-label="Close preview"
+					>
+						<i className="fas fa-times" aria-hidden />
 					</button>
-					<img src={message.image} alt="Shared image" />
+					<img
+						src={message.image}
+						alt="Full size"
+						onClick={(e) => e.stopPropagation()}
+					/>
 				</div>
 			)}
 		</div>

@@ -1,25 +1,48 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, {
+    createContext,
+    useContext,
+    useEffect,
+    useState,
+    useCallback,
+    useMemo,
+} from 'react';
 import io from 'socket.io-client';
-import { useUser } from './user-context.jsx';
+import { useAuth } from './user-context.jsx';
 
-const SocketContext = createContext();
+const SocketConnectionContext = createContext();
+const PresenceContext = createContext();
 
-export const useSocket = () => {
-    const context = useContext(SocketContext);
+export const useSocketConnection = () => {
+    const context = useContext(SocketConnectionContext);
     if (!context) {
-        throw new Error('useSocket must be used within a SocketProvider');
+        throw new Error('useSocketConnection must be used within a SocketProvider');
     }
     return context;
+};
+
+export const usePresence = () => {
+    const context = useContext(PresenceContext);
+    if (!context) {
+        throw new Error('usePresence must be used within a SocketProvider');
+    }
+    return context;
+};
+
+export const useSocket = () => {
+    const connection = useSocketConnection();
+    const presence = usePresence();
+    return { ...connection, ...presence };
 };
 
 export const SocketProvider = ({ children }) => {
     const [socket, setSocket] = useState(null);
     const [onlineUsers, setOnlineUsers] = useState(new Set());
     const [typingUsers, setTypingUsers] = useState(new Map());
-    const { user, token } = useUser();
+    const { user } = useAuth();
+    const userId = user?._id;
 
     useEffect(() => {
-        if (!user || !token) {
+        if (!userId) {
             if (socket) {
                 socket.disconnect();
                 setSocket(null);
@@ -27,23 +50,19 @@ export const SocketProvider = ({ children }) => {
             return;
         }
 
-        // Initialize socket connection
-        const newSocket = io('https://depi-back-production-fb68.up.railway.app/', {
-           
+        const newSocket = io('http://localhost:5000', {
             withCredentials: true,
-          
-            auth: {
-                token: `Bearer ${token}`
-            },
+
             transports: ['websocket', 'polling'],
             reconnection: true,
             reconnectionAttempts: 5,
-            reconnectionDelay: 1000
+            reconnectionDelay: 1000,
         });
 
-        
         newSocket.on('connect', () => {
             console.log('Connected to socket server');
+
+    console.log('SOCKET CONNECTED - new connection'); // how many times does this fire?
         });
 
         newSocket.on('disconnect', () => {
@@ -57,25 +76,30 @@ export const SocketProvider = ({ children }) => {
             setOnlineUsers(new Set(users));
         });
 
-        newSocket.on('user_connected', (userId) => {
-            console.log('User connected:', userId);
-            setOnlineUsers(prev => new Set([...prev, userId]));
+        newSocket.on('user_connected', (id) => {
+            console.log('User connected:', id);
+            setOnlineUsers(prev => new Set([...prev, id]));
         });
 
-        newSocket.on('user_disconnected', (userId) => {
-            console.log('User disconnected:', userId);
+        newSocket.on('user_disconnected', (id) => {
+            console.log('User disconnected global:', id);
             setOnlineUsers(prev => {
                 const updated = new Set(prev);
-                updated.delete(userId);
+                updated.delete(id);
                 return updated;
             });
         });
+        newSocket.on('user_left_the_room', ([userId, roomId]) => {
 
-        newSocket.on('user_typing', ({ userId, isTyping, chatId }) => {
+            console.log(`User ${userId} left room ${roomId}`);
+
+        })
+
+        newSocket.on('user_typing', ({ userId: typingUserId, isTyping, chatId }) => {
             setTypingUsers(prev => {
                 const updated = new Map(prev);
                 if (isTyping) {
-                    updated.set(chatId, userId);
+                    updated.set(chatId, typingUserId);
                 } else {
                     updated.delete(chatId);
                 }
@@ -83,9 +107,8 @@ export const SocketProvider = ({ children }) => {
             });
         });
 
-        newSocket.on('message_read_by', ({ userId, messageId, chatId }) => {
-           
-            console.log(`Message ${messageId} read by ${userId} in chat ${chatId}`);
+        newSocket.on('message_read_by', ({ userId: readerId, messageId, chatId }) => {
+            console.log(`Message ${messageId} read by ${readerId} in chat ${chatId}`);
         });
 
         newSocket.on('connect_error', (error) => {
@@ -103,47 +126,58 @@ export const SocketProvider = ({ children }) => {
                 setSocket(null);
             }
         };
-    }, [user, token]);
+    }, [userId]);
 
-    const joinChat = (chatId) => {
+    const joinChat = useCallback((chatId) => {
         if (socket) {
             socket.emit('join_chat', { chatId });
         }
-    };
+    }, [socket]);
 
-    const leaveChat = (chatId) => {
+    const leaveChat = useCallback((chatId) => {
         if (socket) {
             socket.emit('leave_chat', { chatId });
         }
-    };
+    }, [socket]);
 
-    const emitTyping = (chatId, isTyping) => {
+    const emitTyping = useCallback((chatId, isTyping) => {
         if (socket) {
             socket.emit('typing', { chatId, isTyping });
         }
-    };
+    }, [socket]);
 
-    const markMessageAsRead = (chatId, messageId) => {
+    const markMessageAsRead = useCallback((chatId, messageId) => {
         if (socket) {
             socket.emit('message_read', { chatId, messageId });
         }
-    };
+    }, [socket]);
 
-    const value = {
-        socket,
-        onlineUsers,
-        typingUsers,
-        joinChat,
-        leaveChat,
-        emitTyping,
-        markMessageAsRead,
-        isOnline: (userId) => onlineUsers.has(userId),
-        isTyping: (chatId) => typingUsers.has(chatId)
-    };
+    const connectionValue = useMemo(
+        () => ({
+            socket,
+            joinChat,
+            leaveChat,
+            emitTyping,
+            markMessageAsRead,
+        }),
+        [socket, joinChat, leaveChat, emitTyping, markMessageAsRead]
+    );
+
+    const presenceValue = useMemo(
+        () => ({
+            onlineUsers,
+            typingUsers,
+            isOnline: (id) => onlineUsers.has(id),
+            isTyping: (chatId) => typingUsers.has(chatId),
+        }),
+        [onlineUsers, typingUsers]
+    );
 
     return (
-        <SocketContext.Provider value={value}>
-            {children}
-        </SocketContext.Provider>
+        <SocketConnectionContext.Provider value={connectionValue}>
+            <PresenceContext.Provider value={presenceValue}>
+                {children}
+            </PresenceContext.Provider>
+        </SocketConnectionContext.Provider>
     );
 };

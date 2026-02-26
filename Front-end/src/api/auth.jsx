@@ -1,25 +1,24 @@
 import axiosInstance from "./axiosConfig";
 
+const API_URL = "http://localhost:5000/api";
 
 export const setAuthToken = (token) => {
    
     if (token) {
-        localStorage.setItem('authToken', token);
-  
         localStorage.setItem('isLoggedIn', 'true');
     } else {
-        localStorage.removeItem('authToken');
         localStorage.removeItem('isLoggedIn');
     }
-};
-
-export const getStoredToken = () => {
-    return localStorage.getItem('authToken');
 };
 
 export const isUserLoggedIn = () => {
     return localStorage.getItem('isLoggedIn') === 'true';
 };
+
+const getAxiosConfig = {
+    withCredentials: true,
+   
+}
 
 /**
  * Login user
@@ -31,10 +30,6 @@ export const isUserLoggedIn = () => {
 export const login = async (credentials) => {
     try {
         const response = await axiosInstance.post(`/auth/login`, credentials);
-        
-        if (response.data?.data?.token) {
-            setAuthToken(response.data.data.token);
-        }
         
         return {
             success: true,

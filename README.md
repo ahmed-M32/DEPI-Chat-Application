@@ -4,14 +4,6 @@
 ![alt text](https://raw.githubusercontent.com/ahmed-M32/DEPI-Chat-Application/refs/heads/main/screenshots/Screenshot%202025-05-09%20140253.png)
 ### Main Chat Lay-out
 ![alt text](https://raw.githubusercontent.com/ahmed-M32/DEPI-Chat-Application/refs/heads/main/screenshots/Screenshot%202025-05-09%20140322.png)
-# Members
-## Ahmed mohsen Khlalaf
-## Abd el-rahman adel farouk
-## Youssef fathallah ramadan
-## Ziad ahmed talaat
-## Omar yasser abd el-sameea
-## Mohammed abd el-hamid Mahmoud
-
 
 # Project overview
 DEPI-Chat-Application is a modern, secure real-time messaging platform built with a MERN stack architecture (MongoDB, Express.js, React, Node.js). The application provides a comprehensive chat experience with both private messaging and group chat capabilities.
