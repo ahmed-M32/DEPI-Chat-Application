@@ -50,12 +50,23 @@ const ChatWindow = ({ chat, currentUser, toggleSidebar }) => {
     useEffect(() => {
         if (!socket) return;
         const handleNewMessage = ({ message, chatId }) => {
-            if (chatId === chat?._id) setMessages((prev) => [...prev, message]);
-        };
-        const handleNewGroupMessage = ({ message, groupId }) => {
-            if (chat?.isGroup && groupId === chat?._id)
-                setMessages((prev) => [...prev, message]);
-        };
+    if (chatId !== chat?._id) return;
+    setMessages((prev) => {
+        const alreadyExists = prev.some((m) => m._id === message._id);
+        if (alreadyExists) return prev; 
+        return [...prev, message];
+    });
+    markChatRead(chat._id);
+};
+
+const handleNewGroupMessage = ({ message, groupId }) => {
+    if (!chat?.isGroup || groupId !== chat?._id) return;
+    setMessages((prev) => {
+        const alreadyExists = prev.some((m) => m._id === message._id);
+        if (alreadyExists) return prev; 
+        return [...prev, message];
+    });
+};
 
         if (chat?._id) {
             if (chat.isGroup) {
