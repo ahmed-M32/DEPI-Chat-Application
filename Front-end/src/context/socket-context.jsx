@@ -50,7 +50,7 @@ export const SocketProvider = ({ children }) => {
             return;
         }
 
-        const newSocket = io('https://next-chatio.netlify.app', {
+        const newSocket = io('https://next-chatio.fly.dev', {
             withCredentials: true,
 
             transports: ['websocket', 'polling'],
