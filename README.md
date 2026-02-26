@@ -9,7 +9,7 @@
 
 > A modern, secure real-time messaging platform with private chats, group conversations, media sharing, and end-to-end message encryption.
 
-🔗 **[Live Demo](https://your-vercel-url.app)** &nbsp;|&nbsp; 📸 **[Screenshots](#screenshots)**
+🔗 **[Live Demo](https://next-chatio.netlify.app/chats)
 
 ---
 
@@ -78,4 +78,5 @@ nexchat/
 ```
 
 ---
+
 
