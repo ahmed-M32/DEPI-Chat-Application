@@ -10,8 +10,8 @@ export const generateJwtToken = (userId, res) => {
         maxAge: 2 * 24 * 60 * 60 * 1000, 
         httpOnly: true,
         sameSite: "None", 
-        secure: true, // Always set secure to true when sameSite is None
-        path: "/"    // Ensure cookie is available across all paths
+        secure: true, 
+        path: "/"    
     });
 
     return token;

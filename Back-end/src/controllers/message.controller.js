@@ -2,9 +2,14 @@ import Message from "../models/message.model.js";
 import { User } from "../models/user.model.js";
 import Chat from "../models/chat.model.js";
 import Group from "../models/group.model.js";
+import MessageRead from "../models/messageRead.model.js";
 import { emitToChat, emitToUser } from "../socket/socket.js";
 import { decrypt, encrypt } from "../lib/crypto.js";
-import { v2 } from "cloudinary";
+import v2 from "../lib/cloudinary.js";
+
+const escapeRegex = (value = "") => {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+};
 
 export const getUsers = async (req, res) => {
 	try {
@@ -16,6 +21,41 @@ export const getUsers = async (req, res) => {
 		res.status(500).json({ success: false, message: "Internal server error" });
 	}
 };
+
+export const searchUsersByUsername = async (req, res) => {
+	try {
+		const currentUserId = req.user._id;
+		const qRaw = typeof req.query.q === "string" ? req.query.q : "";
+		const q = qRaw.trim();
+		console.log(req);
+		
+
+		const limitRaw = parseInt(req.query.limit, 10);
+		const limit = Math.min(Math.max(limitRaw || 10, 1), 20);
+
+		if (!q) {
+			return res.json({ success: true, data: [] });
+		}
+
+		const safe = escapeRegex(q);
+		const regex = new RegExp(safe, "i");
+
+		const users = await User.find({
+			_id: { $ne: currentUserId },
+			fullName: { $regex: regex },
+		})
+			.select("fullName profilePicture email")
+			.limit(limit);
+
+		return res.json({ success: true, data: users });
+	} catch (error) {
+		console.error("Can't search users:", error.message);
+		return res
+			.status(500)
+			.json({ success: false, message: "Internal server error" });
+	}
+};
+
 export const getMessages = async (req, res) => {
 	try {
 		const { chatId } = req.params;
@@ -38,22 +78,45 @@ export const getMessages = async (req, res) => {
 			});
 		}
 
-		let messages = [];
-		if (chat instanceof Chat) {
-			messages = await Message.find({ chat: chatId })
-				.populate("sender", "fullName profilePicture")
-				.populate("receiver", "fullName profilePicture")
-				.sort({ createdAt: 1 });
-		} else if (chat instanceof Group) {
-			messages = await Message.find({ group: chatId })
-				.populate("sender", "fullName profilePicture")
-				.sort({ createdAt: 1 });
+		const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+		const limitRaw = parseInt(req.query.limit, 10);
+		const limit = Math.min(Math.max(limitRaw || 20, 1), 100);
+		const skip = (page - 1) * limit;
+
+		const isGroupChat = chat instanceof Group;
+		const messageFilter = isGroupChat ? { group: chatId } : { chat: chatId };
+
+		let messagesQuery = Message.find(messageFilter).populate(
+			"sender",
+			"fullName profilePicture"
+		);
+
+		if (!isGroupChat) {
+			messagesQuery = messagesQuery.populate(
+				"receiver",
+				"fullName profilePicture"
+			);
 		}
 
-		const lastMessage =
-			messages.length > 0 ? messages[messages.length - 1] : null;
+		messagesQuery = messagesQuery.sort({ createdAt: 1 }).skip(skip).limit(limit);
 
-		messages = messages.map((message) => {
+		let lastMessageQuery = Message.findOne(messageFilter)
+			.sort({ createdAt: -1 })
+			.populate("sender", "fullName profilePicture");
+
+		if (!isGroupChat) {
+			lastMessageQuery = lastMessageQuery.populate(
+				"receiver",
+				"fullName profilePicture"
+			);
+		}
+
+		const [messageDocs, lastMessageDoc] = await Promise.all([
+			messagesQuery,
+			lastMessageQuery,
+		]);
+
+		const messages = messageDocs.map((message) => {
 			const messageObj = message.toObject();
 			if (messageObj.content && typeof messageObj.content === "object") {
 				try {
@@ -80,38 +143,36 @@ export const getMessages = async (req, res) => {
 			return messageObj;
 		});
 
-		let decryptedLastMessage = null;
-		if (lastMessage) {
-			decryptedLastMessage = lastMessage.toObject();
-			if (
-				decryptedLastMessage.content &&
-				typeof decryptedLastMessage.content === "object"
-			) {
+		let lastMessage = null;
+		if (lastMessageDoc) {
+			lastMessage = lastMessageDoc.toObject();
+			if (lastMessage.content && typeof lastMessage.content === "object") {
 				try {
 					const decrypted = decrypt({
-						encryptedData: decryptedLastMessage.content.encryptedData,
-						iv: decryptedLastMessage.content.iv,
-						authTag: decryptedLastMessage.content.authTag,
+						encryptedData: lastMessage.content.encryptedData,
+						iv: lastMessage.content.iv,
+						authTag: lastMessage.content.authTag,
 					});
-					decryptedLastMessage.content = decrypted;
+					lastMessage.content = decrypted;
 				} catch (error) {
 					console.error("Error decrypting last message:", error);
-					decryptedLastMessage.content = "Message could not be decrypted";
+					lastMessage.content = "Message could not be decrypted";
 				}
 			}
-			decryptedLastMessage.time = new Date(
-				decryptedLastMessage.createdAt
-			).toLocaleTimeString("en-US", {
-				hour: "2-digit",
-				minute: "2-digit",
-			});
+			lastMessage.time = new Date(lastMessage.createdAt).toLocaleTimeString(
+				"en-US",
+				{
+					hour: "2-digit",
+					minute: "2-digit",
+				}
+			);
 		}
 
 		res.json({
 			success: true,
 			data: {
 				messages,
-				lastMessage: decryptedLastMessage,
+				lastMessage,
 			},
 		});
 	} catch (error) {
@@ -125,78 +186,184 @@ export const getMessages = async (req, res) => {
 
 export const getUserChats = async (req, res) => {
 	try {
-		const userId = req.user._id.toString();
+		const userObjectId = req.user._id;
+		const userId = userObjectId.toString();
 
 		const [chats, groups] = await Promise.all([
-			Chat.find({ members: userId }).populate(
+			Chat.find({ members: userObjectId }).populate(
 				"members",
 				"fullName profilePicture"
 			),
-			Group.find({ members: userId }).populate(
+			Group.find({ members: userObjectId }).populate(
 				"members",
 				"fullName profilePicture"
 			),
 		]);
 
-		const getLastMessage = async (chatId) => {
-			const message = await Message.findOne({
-				$or: [{ chat: chatId }, { group: chatId }],
-			}).sort({ createdAt: -1 });
+		const chatIds = chats.map((chat) => chat._id);
+		const groupIds = groups.map((group) => group._id);
 
+		const [chatReads, groupReads] = await Promise.all([
+			chatIds.length
+				? MessageRead.find({ user: userObjectId, chat: { $in: chatIds } }).select(
+					"chat lastReadAt"
+				  )
+				: [],
+			groupIds.length
+				? MessageRead.find({ user: userObjectId, group: { $in: groupIds } }).select(
+					"group lastReadAt"
+				  )
+				: [],
+		]);
+
+		const lastReadAtByChatId = new Map(
+			chatReads.map((r) => [r.chat.toString(), r.lastReadAt])
+		);
+		const lastReadAtByGroupId = new Map(
+			groupReads.map((r) => [r.group.toString(), r.lastReadAt])
+		);
+
+		const minDate = (dates, fallback) => {
+			if (!dates.length) return fallback;
+			return new Date(Math.min(...dates.map((d) => new Date(d).getTime())));
+		};
+
+		const chatMinLastReadAt = minDate(
+			Array.from(lastReadAtByChatId.values()),
+			new Date(0)
+		);
+		const groupMinLastReadAt = minDate(
+			Array.from(lastReadAtByGroupId.values()),
+			new Date(0)
+		);
+
+		const [recentChatMsgs, recentGroupMsgs] = await Promise.all([
+			chatIds.length
+				? Message.find({
+					chat: { $in: chatIds },
+					sender: { $ne: userObjectId },
+					createdAt: { $gt: chatMinLastReadAt },
+				  }).select("chat createdAt")
+				: [],
+			groupIds.length
+				? Message.find({
+					group: { $in: groupIds },
+					sender: { $ne: userObjectId },
+					createdAt: { $gt: groupMinLastReadAt },
+				  }).select("group createdAt")
+				: [],
+		]);
+
+		const unreadCountByChatId = new Map();
+		recentChatMsgs.forEach((m) => {
+			const id = m.chat?.toString();
+			if (!id) return;
+			const lastReadAt = lastReadAtByChatId.get(id) || new Date(0);
+			if (new Date(m.createdAt).getTime() > new Date(lastReadAt).getTime()) {
+				unreadCountByChatId.set(id, (unreadCountByChatId.get(id) || 0) + 1);
+			}
+		});
+		const unreadCountByGroupId = new Map();
+		recentGroupMsgs.forEach((m) => {
+			const id = m.group?.toString();
+			if (!id) return;
+			const lastReadAt = lastReadAtByGroupId.get(id) || new Date(0);
+			if (new Date(m.createdAt).getTime() > new Date(lastReadAt).getTime()) {
+				unreadCountByGroupId.set(id, (unreadCountByGroupId.get(id) || 0) + 1);
+			}
+		});
+
+		const buildLastMessageSummary = (message) => {
 			if (!message) return null;
 
-			let content = message.content;
-			if (content && typeof content === "object" ) {
+			const msg = message.toObject ? message.toObject() : message;
+			let content = msg.content;
+
+			if (content && typeof content === "object") {
 				try {
 					content = decrypt({
-								encryptedData: content.encryptedData,
-								iv: content.iv,
-								authTag: content.authTag,
-						  })
-						;
+						encryptedData: content.encryptedData,
+						iv: content.iv,
+						authTag: content.authTag,
+					});
 				} catch (error) {
 					console.error("Error decrypting message:", error);
 					content = "Message could not be decrypted";
 				}
 			}
-			if (message.image) {
+
+			if (msg.image) {
 				content = "image";
 			}
+
 			return {
-				_id: message._id,
+				_id: msg._id,
 				content,
-				sender: message.sender,
-				createdAt: message.createdAt,
-				time: new Date(message.createdAt).toLocaleTimeString("en-US", {
+				sender: msg.sender,
+				createdAt: msg.createdAt,
+				time: new Date(msg.createdAt).toLocaleTimeString("en-US", {
 					hour: "2-digit",
 					minute: "2-digit",
 				}),
 			};
 		};
 
-		const reorderMembers = async (items) => {
-			const result = [];
-			for (const item of items) {
+		const [chatLastMessages, groupLastMessages] = await Promise.all([
+			chatIds.length
+				? Message.aggregate([
+						{ $match: { chat: { $in: chatIds } } },
+						{ $sort: { createdAt: -1 } },
+						{ $group: { _id: "$chat", doc: { $first: "$$ROOT" } } },
+				  ])
+				: [],
+			groupIds.length
+				? Message.aggregate([
+						{ $match: { group: { $in: groupIds } } },
+						{ $sort: { createdAt: -1 } },
+						{ $group: { _id: "$group", doc: { $first: "$$ROOT" } } },
+				  ])
+				: [],
+		]);
+
+		const lastMessagesByChatId = new Map(
+			chatLastMessages.map((entry) => [
+				entry._id.toString(),
+				buildLastMessageSummary(entry.doc),
+			])
+		);
+
+		const lastMessagesByGroupId = new Map(
+			groupLastMessages.map((entry) => [
+				entry._id.toString(),
+				buildLastMessageSummary(entry.doc),
+			])
+		);
+
+		const reorderMembers = (items, isGroup) =>
+			items.map((item) => {
 				const members = item.members.map((m) => m.toObject?.() || m);
 				const currentUser = members.find((m) => m._id.toString() === userId);
 				const others = members.filter((m) => m._id.toString() !== userId);
 
-				// Get last message for this chat/group
-				const lastMessage = await getLastMessage(item._id);
+				const lastMessageMap = isGroup
+					? lastMessagesByGroupId
+					: lastMessagesByChatId;
+				const lastMessage =
+					lastMessageMap.get(item._id.toString()) || null;
 
-				result.push({
+				const unreadMap = isGroup ? unreadCountByGroupId : unreadCountByChatId;
+				const unreadCount = unreadMap.get(item._id.toString()) ?? 0;
+
+				return {
 					...item.toObject(),
 					members: [currentUser, ...others],
 					lastMessage,
-				});
-			}
-			return result;
-		};
+					unreadCount,
+				};
+			});
 
-		const [userChats, userGroups] = await Promise.all([
-			reorderMembers(chats),
-			reorderMembers(groups),
-		]);
+		const userChats = reorderMembers(chats, false);
+		const userGroups = reorderMembers(groups, true);
 
 		res.json({
 			success: true,
@@ -211,17 +378,106 @@ export const getUserChats = async (req, res) => {
 	}
 };
 
+export const markChatRead = async (req, res) => {
+	try {
+		const userId = req.user._id;
+		const { chatId } = req.params;
+
+		const chat = await Chat.findOne({ _id: chatId, members: userId });
+		if (!chat) {
+			return res
+				.status(404)
+				.json({ success: false, message: "Chat not found" });
+		}
+
+		const latest = await Message.findOne({ chat: chatId })
+			.sort({ createdAt: -1 })
+			.select("_id createdAt");
+
+		await MessageRead.findOneAndUpdate(
+			{ user: userId, chat: chatId },
+			{
+				$set: {
+					lastReadMessage: latest?._id,
+					lastReadAt: latest?.createdAt || new Date(),
+				},
+			},
+			{ upsert: true, new: true }
+		);
+
+		await Message.updateMany(
+			{ chat: chatId, receiver: userId, isRead: false },
+			{ $set: { isRead: true } }
+		);
+
+		return res.json({ success: true });
+	} catch (error) {
+		console.error("Failed to mark chat read:", error);
+		return res
+			.status(500)
+			.json({ success: false, message: "Internal server error" });
+	}
+};
+
+export const markGroupRead = async (req, res) => {
+	try {
+		const userId = req.user._id;
+		const { groupId } = req.params;
+
+		const group = await Group.findOne({ _id: groupId, members: userId });
+		if (!group) {
+			return res
+				.status(404)
+				.json({ success: false, message: "Group not found" });
+		}
+
+		const latest = await Message.findOne({ group: groupId })
+			.sort({ createdAt: -1 })
+			.select("_id createdAt");
+
+		await MessageRead.findOneAndUpdate(
+			{ user: userId, group: groupId },
+			{
+				$set: {
+					lastReadMessage: latest?._id,
+					lastReadAt: latest?.createdAt || new Date(),
+				},
+			},
+			{ upsert: true, new: true }
+		);
+
+		return res.json({ success: true });
+	} catch (error) {
+		console.error("Failed to mark group read:", error);
+		return res
+			.status(500)
+			.json({ success: false, message: "Internal server error" });
+	}
+};
+
 export const sendMessage = async (req, res) => {
 	try {
-		const { content, receiver } = req.body;
+		let { content, receiver } = req.body;
 		const { chatId } = req.params;
 		const senderId = req.user._id;
-
 		const chat = await Chat.findById(chatId);
 		if (!chat) {
 			return res
 				.status(404)
 				.json({ success: false, message: "Chat not found" });
+		}
+
+		// For direct chats, require receiver; derive from chat members if missing
+		if (!receiver && chat.members?.length === 2) {
+			receiver = chat.members.find(
+				(m) => m.toString() !== senderId.toString()
+			);
+		}
+		if (!receiver) {
+			return res.status(400).json({
+				success: false,
+				message: "Receiver is required for direct messages",
+			});
 		}
 
 		let messageContent;
@@ -361,12 +617,29 @@ export const createChat = async (req, res) => {
 		const userId = req.body.member;
 		const currentUserId = req.user._id;
 
-		const existingChat = await Chat.findOne({
+		let existingChat = await Chat.findOne({
 			members: { $all: [currentUserId, userId], $size: 2 },
-		});
+		}).populate("members", "fullName profilePicture");
 
 		if (existingChat) {
-			return res.json({ success: true, data: existingChat });
+			const members = (existingChat.members || []).map(
+				(m) => m.toObject?.() || m
+			);
+			const currentUser = members.find(
+				(m) => m._id.toString() === currentUserId.toString()
+			);
+			const others = members.filter(
+				(m) => m._id.toString() !== currentUserId.toString()
+			);
+			return res.json({
+				success: true,
+				data: {
+					...existingChat.toObject(),
+					members: [currentUser, ...others],
+					lastMessage: null,
+					unreadCount: 0,
+				},
+			});
 		}
 
 		const newChat = new Chat({
@@ -374,7 +647,25 @@ export const createChat = async (req, res) => {
 		});
 
 		await newChat.save();
-		res.json({ success: true, data: newChat });
+		await newChat.populate("members", "fullName profilePicture");
+
+		const members = (newChat.members || []).map((m) => m.toObject?.() || m);
+		const currentUser = members.find(
+			(m) => m._id.toString() === currentUserId.toString()
+		);
+		const others = members.filter(
+			(m) => m._id.toString() !== currentUserId.toString()
+		);
+
+		res.json({
+			success: true,
+			data: {
+				...newChat.toObject(),
+				members: [currentUser, ...others],
+				lastMessage: null,
+				unreadCount: 0,
+			},
+		});
 	} catch (error) {
 		console.error("Failed to create chat:", error);
 		res.status(500).json({ success: false, message: "Internal server error" });
@@ -387,14 +678,12 @@ export const createGroup = async (req, res) => {
 		const currentUserId = req.user._id;
 		let finalGroupImg = image;
 
-		// Handle image upload if provided as base64
 		if (req.body.image) {
 			try {
 				const upload = await v2.uploader.upload(req.body.image);
 				finalGroupImg = upload.secure_url;
 			} catch (uploadError) {
 				console.error("Image upload failed:", uploadError);
-				// Continue with default or empty image
 			}
 		}
 
@@ -406,10 +695,8 @@ export const createGroup = async (req, res) => {
 
 		await newGroup.save();
 
-		// Populate members to get their details
 		await newGroup.populate("members", "fullName profilePicture");
 
-		// Notify all members about the new group
 		newGroup.members.forEach((member) => {
 			emitToUser(member._id, "new_group", { group: newGroup });
 		});

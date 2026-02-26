@@ -8,7 +8,6 @@ const messageSchema = mongoose.Schema(
       type: mongoose.Schema.ObjectId,
       ref: "User",
       required: function () {
-        // Require receiver only if it's a private chat (not a group)
         return !this.group;
       },
     },
@@ -28,7 +27,6 @@ const messageSchema = mongoose.Schema(
       type: mongoose.Schema.ObjectId,
       ref: "Chat",
       required: function () {
-        // Require chat only if it's not a group message
         return !this.group;
       },
     },
@@ -36,13 +34,17 @@ const messageSchema = mongoose.Schema(
     group: {
       type: mongoose.Schema.ObjectId,
       ref: "Group",
-      required: false, // group is optional (used for group messages)
+      required: false, 
     },
 
     isRead: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
+
+messageSchema.index({ chat: 1, createdAt: -1 });
+messageSchema.index({ group: 1, createdAt: -1 });
+messageSchema.index({ sender: 1, createdAt: -1 });
 
 
 const Message = mongoose.model("Message", messageSchema);

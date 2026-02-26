@@ -57,7 +57,13 @@ const ChatWindow = ({ chat, currentUser, toggleSidebar }) => {
                 setMessages((prev) => [...prev, message]);
         };
 
-        markChatRead(chat?._id); // ✅ auto-mark read when message arrives and you're here
+        if (chat?._id) {
+            if (chat.isGroup) {
+                markGroupRead(chat._id);
+            } else {
+                markChatRead(chat._id);
+            }
+        }
         socket.on("new_message", handleNewMessage);
         socket.on("new_group_message", handleNewGroupMessage);
         return () => {
@@ -137,6 +143,13 @@ const ChatWindow = ({ chat, currentUser, toggleSidebar }) => {
                 response = await sendMessage(chat._id, { ...payload, receiver });
             }
             if (response.success) {
+                const sentMessage = response.data?.data;
+                if (sentMessage?._id) {
+                    setMessages((prev) => {
+                        const exists = prev.some((m) => m?._id === sentMessage._id);
+                        return exists ? prev : [...prev, sentMessage];
+                    });
+                }
                 setNewMessage("");
                 setSelectedImage(null);
             }

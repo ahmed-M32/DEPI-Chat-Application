@@ -3,6 +3,10 @@ import { User } from "../models/user.model.js";
 import v2 from "../lib/cloudinary.js";
 import bcrypt from "bcryptjs";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const isValidEmail = (email = "") => EMAIL_REGEX.test(email);
+
 export const register = async (req, res) => {
     try {
         const { fullName, email, password } = req.body;
@@ -11,6 +15,13 @@ export const register = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: "Please provide all required fields"
+            });
+        }
+
+        if (!isValidEmail(email)) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide a valid email address"
             });
         }
 
@@ -71,6 +82,13 @@ export const login = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: "Please provide email and password"
+            });
+        }
+
+        if (!isValidEmail(email)) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide a valid email address"
             });
         }
 
@@ -154,12 +172,6 @@ export const logout = async (req, res) => {
     }
 };
 
-v2.config({
-    cloud_name: process.env.CLOUDINARY_USERNAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-});
-
 export const updateProfilePicture = async (req, res) => {
     try {
         const userId = req.user._id;
@@ -172,7 +184,6 @@ export const updateProfilePicture = async (req, res) => {
             });
         }
 
-        // Upload image to Cloudinary
         const uploadResponse = await v2.uploader.upload(image, {
             folder: 'profile_pictures',
             transformation: [
@@ -181,7 +192,6 @@ export const updateProfilePicture = async (req, res) => {
             ]
         });
 
-        // Update user's profile picture URL
         const updatedUser = await User.findByIdAndUpdate(
             userId,
             { profilePicture: uploadResponse.secure_url },
@@ -207,7 +217,6 @@ export const removeProfilePicture = async (req, res) => {
     try {
         const userId = req.user._id;
 
-        // Update user to remove profile picture
         const updatedUser = await User.findByIdAndUpdate(
             userId,
             { profilePicture: null },

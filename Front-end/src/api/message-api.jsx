@@ -40,6 +40,26 @@ export const getUsers = async () => {
     }
 };
 
+export const searchUsers = async (query, limit = 10) => {
+    try {
+        const q = typeof query === "string" ? query : "";
+        const response = await axiosInstance.get(
+            `/message/users/search?q=${encodeURIComponent(q)}&limit=${encodeURIComponent(limit)}`,
+            axiosConfig
+        );
+        return {
+            success: true,
+            data: response.data,
+        };
+    } catch (error) {
+        return {
+            success: false,
+            code: error.response?.status || 500,
+            message: error.response?.data?.message || "Failed to search users",
+        };
+    }
+};
+
 export const getChats = async () => {
     try {
         const response = await axiosInstance.get('/message/chats', axiosConfig);

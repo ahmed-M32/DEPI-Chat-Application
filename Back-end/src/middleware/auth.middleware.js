@@ -3,14 +3,11 @@ import { User } from "../models/user.model.js";
 
 export const checkAuthentication = async (req, res, next) => {
     try {
-        // Get token from cookie or header
         let token = req.cookies.jwt;
         
-        // If no token in cookies, check headers
         if (!token) {
             token = req.header('x-auth-token') || req.header('Authorization');
             
-            // If token is in Authorization header with Bearer prefix
             if (token && token.startsWith('Bearer ')) {
                 token = token.slice(7);
             }

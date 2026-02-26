@@ -40,7 +40,6 @@ export const useUser = () => {
 export const UserProvider = ({ children }) => {
     const navigate = useNavigate();
 
-    // Only user display data in localStorage (non-sensitive, for instant UI load)
     const [user, setUser] = useState(() => {
         try {
             const storedUser = localStorage.getItem("user");
@@ -55,14 +54,12 @@ export const UserProvider = ({ children }) => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Sync user display data to localStorage whenever it changes
     useEffect(() => {
         if (user) {
             localStorage.setItem("user", JSON.stringify(user));
         }
     }, [user]);
 
-    // On mount, validate auth with server via cookie
     useEffect(() => {
         const validateAuth = async () => {
             try {
@@ -82,7 +79,6 @@ export const UserProvider = ({ children }) => {
                 }
             } catch (error) {
                 console.error("Server validation failed:", error);
-                // If server is down but we have cached user, keep them logged in
                 const storedUser = localStorage.getItem("user");
                 if (!storedUser) {
                     handleLogout();
@@ -95,13 +91,12 @@ export const UserProvider = ({ children }) => {
         validateAuth();
     }, []);
 
-    // Fetch users list once on mount
     useEffect(() => {
         const fetchUsers = async () => {
             try {
                 const response = await getUsers();
                 if (response.success) {
-                    setUsers(response.data);
+                    setUsers(response.data.data);
                 }
             } catch (error) {
                 console.error("Failed to fetch users:", error);
@@ -122,6 +117,8 @@ export const UserProvider = ({ children }) => {
         setUser(null);
         setUsers([]);
         localStorage.removeItem("user");
+        localStorage.removeItem("isLoggedIn");
+        navigate("/login", { replace: true });
     }, [navigate]);
 
     const logout = useCallback(async () => {
