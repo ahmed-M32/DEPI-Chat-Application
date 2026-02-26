@@ -14,7 +14,7 @@ const server = createServer(app);
 const io = initializeSocket(server);
 
 app.use(cors({
-    origin: ['https://next-chatio.netlify.app/','http://localhost:5173'],
+    origin: ['https://next-chatio.netlify.app','http://localhost:5173'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token']
