@@ -7,6 +7,11 @@
 
 # Project overview
 DEPI-Chat-Application is a modern, secure real-time messaging platform built with a MERN stack architecture (MongoDB, Express.js, React, Node.js). The application provides a comprehensive chat experience with both private messaging and group chat capabilities.
+# Tech
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react)
+![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js)
+![MongoDB](https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb)
+![Socket.io](https://img.shields.io/badge/Socket.io-black?style=for-the-badge&logo=socket.io)
 
 ## Key Features
 - **Secure Authentication**: User registration and login with JWT-based authentication
@@ -39,3 +44,4 @@ DEPI-Chat-Application is a modern, secure real-time messaging platform built wit
 - Frontend deployed on Vercel
 - Backend hosted with Railway
 - MongoDB Atlas for database hosting
+
